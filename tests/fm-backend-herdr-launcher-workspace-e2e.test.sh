@@ -47,6 +47,14 @@ command -v treehouse >/dev/null 2>&1 || { echo "skip: treehouse not found (requi
 herdr_forget_inherited_pane
 
 TMP_ROOT=$(mktemp -d "$(cd "${TMPDIR:-/tmp}" && pwd -P)/fm-herdr-launcher-e2e.XXXXXX")
+fm_test_lab_adopt "$TMP_ROOT"
+# Spawns below are real fm-spawn.sh worktree-providing launches, so the pane's
+# `treehouse get` must resolve to a lab-contained fake that yields a git
+# worktree inside TMP_ROOT - the gate lab authorization refuses the real pool
+# allocator.
+fm_test_fake_treehouse "$TMP_ROOT/fakebin" "$TMP_ROOT/treehouse-pool" \
+  || { rm -rf "$TMP_ROOT"; printf 'not ok - could not install the lab-contained treehouse fake\n' >&2; exit 1; }
+export PATH="$TMP_ROOT/fakebin:$PATH"
 HERDR_LAB_HELPER="$ROOT/bin/fm-herdr-lab.sh"
 HERDR_LAB_SESSION=$("$HERDR_LAB_HELPER" name fm-herdr-launcher-ws) || {
   rm -rf "$TMP_ROOT"
@@ -425,7 +433,8 @@ pass "real herdr E2E: a --secondmate launch still stands up that secondmate's ow
 
 # --- 8. teardown closes only the worker's own pane --------------------------
 
-FM_ROOT_OVERRIDE="$ROOT" FM_STATE_OVERRIDE="$PRIMARY_HOME/state" FM_DATA_OVERRIDE="$PRIMARY_HOME/data" \
+FM_HOME="$PRIMARY_HOME" \
+  FM_ROOT_OVERRIDE="$ROOT" FM_STATE_OVERRIDE="$PRIMARY_HOME/state" FM_DATA_OVERRIDE="$PRIMARY_HOME/data" \
   FM_CONFIG_OVERRIDE="$PRIMARY_HOME/config" \
   "$ROOT/bin/fm-teardown.sh" dupC >"$TMP_ROOT/teardown.out" 2>&1
 status=$?

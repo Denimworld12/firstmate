@@ -30,10 +30,13 @@ set -u
 fm_live_gate opt-in FM_SESSIONSTART_INSTRUCTION_REFRESH_LIVE_E2E pi tmux git
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TMUX_SOCKET="fm-sessionstart-instruction-refresh-$$"
+# The tmux socket file lives at TMUX_TMPDIR/tmux-<uid>/TMUX_SOCKET; with the
+# TMPDIR-rooted lab that whole path must stay under the Unix socket name
+# limit, so the lab dir and socket names are kept short.
+TMUX_SOCKET="insref-$$"
 TMUX_SESSION="instruction-refresh"
 LAB=${TMPDIR:-/tmp}
-LAB="${LAB%/}/fm-sessionstart-instruction-refresh-live-e2e.$$"
+LAB="${LAB%/}/fm-insref.$$"
 PROJECT="$LAB/project"
 HOME_DIR="$LAB/home"
 NONCE=$(od -An -N12 -tx1 /dev/urandom | tr -d ' \n')
@@ -108,6 +111,12 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 mkdir -p "$LAB"
+fm_test_lab_adopt "$LAB"
+# The suite's own private tmux socket already isolates the server; under the
+# gate's structural lab authorization the socket directory must also sit
+# inside a marked lab dir.
+mkdir -p "$LAB/tt"
+export TMUX_TMPDIR="$LAB/tt"
 git clone --quiet --no-hardlinks "$ROOT" "$PROJECT" || fail "could not create isolated Firstmate checkout"
 git -C "$PROJECT" checkout -q -B main "$TEST_COMMIT" \
   || fail "could not check out isolated test ref $TEST_REF ($TEST_COMMIT)"
@@ -137,8 +146,12 @@ git -C "$PROJECT" add AGENTS.md
 git -C "$PROJECT" commit -q -m "test: initial instruction contract" || fail "could not commit initial instruction contract"
 printf '%s\n' '{"compaction":{"keepRecentTokens":200}}' > "$PROJECT/.pi/settings.json"
 
-tmux -L "$TMUX_SOCKET" new-session -d -s "$TMUX_SESSION" -c "$PROJECT" -x 220 -y 55 \
-  -e "FM_HOME=$HOME_DIR" -e "FM_ROOT_OVERRIDE=$PROJECT" -e "FM_GATE_REFUSE_BYPASS=1" \
+# The pane is a real session, not a gate agent: the server is started with the
+# gate marker scrubbed so it cannot leak through the server environment into
+# the Pi extension's sessionstart wrapper, which would correctly stand down.
+env -u NO_MISTAKES_GATE \
+  tmux -L "$TMUX_SOCKET" new-session -d -s "$TMUX_SESSION" -c "$PROJECT" -x 220 -y 55 \
+  -e "FM_HOME=$HOME_DIR" -e "FM_ROOT_OVERRIDE=$PROJECT" -e "TMUX_TMPDIR=$LAB/tt" \
   pi --no-tools -e "$PROJECT/.pi/extensions/fm-primary-turnend-guard.ts" \
   || fail "could not start isolated Pi session"
 
@@ -161,7 +174,7 @@ wait_for_file "$HOME_DIR/state/.sessionstart-e2e-sources" 120 || {
   capture >&2
   fail "Pi extension did not invoke the real session-start wrapper"
 }
-grep -Fqx -- 'argv=--source startup pi=true root='"$PROJECT"' home='"$HOME_DIR" "$HOME_DIR/state/.sessionstart-e2e-sources" >/dev/null || {
+grep -Fqx -- 'argv=--source startup --pi-prerequisite pi=true root='"$PROJECT"' home='"$HOME_DIR" "$HOME_DIR/state/.sessionstart-e2e-sources" >/dev/null || {
   capture >&2
   printf '# Pi session-start sources:\n' >&2
   cat "$HOME_DIR/state/.sessionstart-e2e-sources" >&2

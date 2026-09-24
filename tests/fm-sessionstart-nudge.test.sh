@@ -48,7 +48,7 @@ make_primary() {
 
 run_nudge() {
   local root=$1
-  FM_GATE_REFUSE_BYPASS=0 FM_ROOT_OVERRIDE="$root" FM_HOME="$root" "$NUDGE"
+  FM_ROOT_OVERRIDE="$root" FM_HOME="$root" "$NUDGE"
 }
 
 expect_silent_zero() {
@@ -74,7 +74,7 @@ test_genuine_primary_nudges() {
 test_gate_env_is_silent() {
   local root="$TMP_ROOT/gate-env"
   make_primary "$root"
-  expect_silent_zero "gate env nudge" env NO_MISTAKES_GATE=1 FM_GATE_REFUSE_BYPASS=0 \
+  expect_silent_zero "gate env nudge" env NO_MISTAKES_GATE=1 \
     FM_ROOT_OVERRIDE="$root" FM_HOME="$root" "$NUDGE"
   pass "fm-sessionstart-nudge: NO_MISTAKES_GATE is silent"
 }
@@ -89,7 +89,7 @@ test_gate_common_dir_is_silent() {
   mkdir -p "$root/bin" "$root/state"
   : > "$root/AGENTS.md"
   printf 'gate-test\n' > "$root/.fm-secondmate-home"
-  expect_silent_zero "gate common-dir nudge" env FM_GATE_REFUSE_BYPASS=0 \
+  expect_silent_zero "gate common-dir nudge" env \
     FM_ROOT_OVERRIDE="$root" FM_HOME="$root" "$NUDGE"
   pass "fm-sessionstart-nudge: .no-mistakes gate common-dir is silent"
 }
@@ -150,7 +150,7 @@ test_namespace_pid1_lock_holder_is_silent() {
   # Non-vacuity: inside the same namespace, with no lock at all, the hook must
   # still produce its nudge, so silence below means the owner was recognized.
   out=$(unshare -rpf --mount-proc bash -c \
-    "FM_GATE_REFUSE_BYPASS=0 FM_ROOT_OVERRIDE='$root' FM_HOME='$root' '$NUDGE'; exit \$?") || status=$?
+    "FM_ROOT_OVERRIDE='$root' FM_HOME='$root' '$NUDGE'; exit \$?") || status=$?
   expect_code 0 "$status" "namespace nudge without a lock"
   [ "$out" = "$NUDGE_LINE" ] \
     || fail "the namespace fixture did not nudge without a lock, so its silence proves nothing: $out"
@@ -158,7 +158,7 @@ test_namespace_pid1_lock_holder_is_silent() {
   printf '1\n' > "$root/state/.lock"
   status=0
   out=$(unshare -rpf --mount-proc bash -c \
-    "FM_GATE_REFUSE_BYPASS=0 FM_ROOT_OVERRIDE='$root' FM_HOME='$root' '$NUDGE'; exit \$?") || status=$?
+    "FM_ROOT_OVERRIDE='$root' FM_HOME='$root' '$NUDGE'; exit \$?") || status=$?
   expect_code 0 "$status" "namespace pid 1 lock nudge"
   [ -z "$out" ] \
     || fail "a lock held by the harness at namespace pid 1 was not recognized, got: $out"
@@ -225,14 +225,14 @@ run_hook() {  # <root> [args...]
   local root=$1
   shift
   env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS -u GROK_AGENT \
-    FM_GATE_REFUSE_BYPASS=0 FM_ROOT_OVERRIDE="$root" FM_HOME="$root" PATH="$RUN_PATH" "$RUN" "$@"
+    FM_ROOT_OVERRIDE="$root" FM_HOME="$root" PATH="$RUN_PATH" "$RUN" "$@"
 }
 
 run_hook_pi() {  # <root> [args...]
   local root=$1
   shift
   env -u CLAUDECODE -u GROK_AGENT PI_CODING_AGENT=true FM_PI_HARNESS=pi \
-    FM_GATE_REFUSE_BYPASS=0 FM_ROOT_OVERRIDE="$root" FM_HOME="$root" PATH="$RUN_PATH" "$RUN" "$@"
+    FM_ROOT_OVERRIDE="$root" FM_HOME="$root" PATH="$RUN_PATH" "$RUN" "$@"
 }
 
 # Every run-tier assertion keys off the digest banner, which fm-session-start.sh
@@ -941,7 +941,7 @@ SH
   chmod +x "$fixture/bin/"*.sh
 
   out=$(EXT="$fixture/.pi/extensions/fm-primary-turnend-guard.ts" \
-    FM_HOME="$fixture" FM_ROOT_OVERRIDE="$fixture" FM_GATE_REFUSE_BYPASS=1 \
+    FM_HOME="$fixture" FM_ROOT_OVERRIDE="$fixture" \
     node --input-type=module 2>&1 <<'JS'
 import { pathToFileURL } from "node:url";
 const handlers = new Map();
@@ -1016,10 +1016,10 @@ test_run_gate_and_scope_are_silent() {
   local root="$TMP_ROOT/run-gate" base="$TMP_ROOT/run-linked-base" linked="$TMP_ROOT/run-linked"
   local out status=0
   make_run_primary "$root"
-  expect_silent_zero "gate env run" env NO_MISTAKES_GATE=1 FM_GATE_REFUSE_BYPASS=0 \
+  expect_silent_zero "gate env run" env NO_MISTAKES_GATE=1 \
     FM_ROOT_OVERRIDE="$root" FM_HOME="$root" PATH="$RUN_PATH" "$RUN" --source startup
   assert_absent "$root/state/.lock" "a gate agent's session open still took the fleet lock"
-  out=$(env NO_MISTAKES_GATE=1 FM_GATE_REFUSE_BYPASS=0 \
+  out=$(env NO_MISTAKES_GATE=1 \
     FM_ROOT_OVERRIDE="$root" FM_HOME="$root" PATH="$RUN_PATH" \
     "$RUN" --source startup --pi-prerequisite 2>&1) || status=$?
   expect_code 3 "$status" "gate env Pi prerequisite stand-down"

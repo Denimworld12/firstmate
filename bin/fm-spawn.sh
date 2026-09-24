@@ -597,8 +597,21 @@ fm_backlog_directory_present "$STATE" "state directory" || {
 # shellcheck source=bin/fm-worker-account-lib.sh
 . "$SCRIPT_DIR/fm-worker-account-lib.sh"
 # Fail closed before any fleet mutation: a no-mistakes gate agent must never spawn
-# a direct report (see bin/fm-gate-refuse-lib.sh).
-fm_refuse_if_gate_agent
+# a direct report (see bin/fm-gate-refuse-lib.sh). Lab authorization must judge the
+# backend this launch will actually use, so pre-scan the arguments for --backend -
+# the real parse happens below and an unknown token simply yields no hint.
+_spawn_backend_hint='' _spawn_from_meta='' _spawn_prev_arg=''
+for _a in "$@"; do
+  [ "$_spawn_prev_arg" = --backend ] && _spawn_backend_hint=$_a
+  case "$_a" in
+    --backend=*) _spawn_backend_hint=${_a#--backend=} ;;
+    --relaunch) _spawn_from_meta=1 ;;
+  esac
+  _spawn_prev_arg=$_a
+done
+unset _spawn_prev_arg
+fm_refuse_if_gate_agent . "$_spawn_backend_hint" "$_spawn_from_meta"
+unset _spawn_backend_hint _spawn_from_meta
 # Skip the watcher guard when re-exec'd for one pair of a batch (FM_SPAWN_NO_GUARD is
 # set by the batch loop below), so the guard runs once for the batch, not once per pair.
 [ -n "${FM_SPAWN_NO_GUARD:-}" ] || "$FM_ROOT/bin/fm-guard.sh" || true
@@ -882,6 +895,9 @@ spawn_remote_secondmate() {
     fm_lock_release "$SPAWN_TASK_LOCK" || true
     return 3
   fi
+  # The remote route is confirmed: a gate lab may only take it through a
+  # lab-local ssh transport (no-op outside an authorized lab call).
+  fm_gate_lab_assert_backend remote
   host=$(secondmate_registry_field "$DATA/secondmates.md" "$id" host)
   root=$(secondmate_registry_field "$DATA/secondmates.md" "$id" root)
   home=$(secondmate_registry_field "$DATA/secondmates.md" "$id" home)
@@ -1598,6 +1614,9 @@ if [ "$RELAUNCH" -eq 0 ]; then
     BACKEND=$(fm_backend_name)
   fi
   fm_backend_validate_spawn "$BACKEND" || exit 1
+  # Gate lab calls may only reach the lab's own isolated backend target (a
+  # no-op outside an authorized lab call).
+  fm_gate_lab_assert_backend "$BACKEND"
   fm_backend_source "$BACKEND" || exit 1
   if [ "$BACKEND" = orca ] && [ "$KIND" = secondmate ]; then
     echo "error: backend=orca does not support --secondmate spawns yet" >&2
@@ -2812,6 +2831,9 @@ else
   WT=""
   BRIEF="$DATA/$ID/brief.md"
 fi
+# A gate lab spawn may only target a project inside the lab dir (no-op outside
+# an authorized lab call).
+fm_gate_lab_assert_path "$PROJ_ABS" "spawn project"
 if [ "$RELAUNCH" -eq 0 ] && [ "$KIND" != secondmate ] && [ "$BACKEND" != orca ]; then
   SPAWN_TREEHOUSE_PROJECT_LOCK=$(fm_treehouse_project_lock_path "$PROJ_ABS") || {
     echo "error: could not resolve the shared Treehouse project lock for $PROJ_ABS" >&2

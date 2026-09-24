@@ -20,6 +20,8 @@ set -u
 # shellcheck source=/dev/null
 . "$ROOT/bin/fm-marker-lib.sh"
 # shellcheck source=/dev/null
+. "$ROOT/bin/fm-task-inbox-lib.sh"
+# shellcheck source=/dev/null
 . "$ROOT/bin/fm-backend.sh"
 
 fm_live_gate opt-in FM_SEND_MARKER_HERDR_E2E git herdr jq pi
@@ -27,6 +29,7 @@ fm_live_gate opt-in FM_SEND_MARKER_HERDR_E2E git herdr jq pi
 LAB_HELPER=${HERDR_LAB_HELPER:-$ROOT/bin/fm-herdr-lab.sh}
 SESSION=$("$LAB_HELPER" name fm-send-secondmate-marker-v7)
 TMP_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/fm-send-marker-herdr-e2e.XXXXXX")
+fm_test_lab_adopt "$TMP_ROOT"
 SENDER_HOME="$TMP_ROOT/sender-home"
 SECOND_HOME="$TMP_ROOT/secondmate-home"
 CAPTURE="$TMP_ROOT/pi-before-agent.jsonl"
@@ -43,7 +46,11 @@ cleanup() {
   if ! "$LAB_HELPER" teardown "$SESSION"; then
     rc=1
   fi
-  rm -rf "$TMP_ROOT"
+  if [ "$rc" -eq 0 ] || [ "${KEEP_LAB_ARTIFACTS:-}" != 1 ]; then
+    rm -rf "$TMP_ROOT"
+  else
+    printf 'kept lab artifacts at %s\n' "$TMP_ROOT" >&2
+  fi
   exit "$rc"
 }
 trap cleanup EXIT
@@ -108,7 +115,7 @@ printf '#!/usr/bin/env bash\nexec %q -e %q "$@"\n' "$REAL_PI" "$CAPTURE_EXTENSIO
 chmod +x "$FAKEBIN/pi"
 
 "$LAB_HELPER" provision "$SESSION"
-PATH="$FAKEBIN:$ORIGINAL_PATH" FM_GATE_REFUSE_BYPASS=1 FM_HOME="$SENDER_HOME" HERDR_SESSION="$SESSION" \
+PATH="$FAKEBIN:$ORIGINAL_PATH" FM_HOME="$SENDER_HOME" HERDR_SESSION="$SESSION" \
   "$ROOT/bin/fm-spawn.sh" "$ID" "$SECOND_HOME" --secondmate --harness pi --backend herdr >/dev/null
 
 META="$SENDER_HOME/state/$ID.meta"
@@ -156,13 +163,33 @@ wait_for_prompt 'Isolated marker capture secondmate' \
   || fail "real Pi before_agent_start capture did not load for the startup charter"
 wait_for_idle || fail "real Pi did not become idle after the startup capture"
 
-PATH="$FAKEBIN:$ORIGINAL_PATH" FM_GATE_REFUSE_BYPASS=1 FM_HOME="$SENDER_HOME" \
-  "$ROOT/bin/fm-send.sh" "$ID" "$REQUEST" >/dev/null
-wait_for_prompt "$REQUEST" || fail "real Pi did not receive the exact-id fm-send request"
-GOT=$(jq -r --arg needle "$REQUEST" 'select(.prompt | contains($needle)) | .prompt' "$CAPTURE" | tail -1)
-[ "$GOT" = "${FM_FROMFIRST_MARK}${REQUEST}" ] \
-  || fail "real Pi exact-id prompt did not contain exactly one terminal-safe marker"$'\n'"--- bytes ---"$'\n'"$(printf '%s' "$GOT" | od -An -tx1)"
-printf 'evidence: exact-id received-hex=%s\n' "$(printf '%s' "$GOT" | od -An -tx1 | tr -d ' \n')"
+PATH="$FAKEBIN:$ORIGINAL_PATH" FM_HOME="$SENDER_HOME" \
+  "$ROOT/bin/fm-send.sh" "$ID" "$REQUEST" >"$TMP_ROOT/send.out" 2>"$TMP_ROOT/send.err"
+rc=$?
+[ "$rc" -eq 0 ] || { cat "$TMP_ROOT/send.err" >&2; fail "exact-id fm-send exited $rc"; }
+
+# Inbox-plane delivery (fm-send.sh #2856): the durable .msg record IS the
+# delivery - it carries marker, correlation, and request bytes - while the
+# terminal receives only the constant doorbell line. Assert the record's bytes
+# directly, then let the drain prompt prove the ring reached the pane.
+INBOX_DIR="$SENDER_HOME/state/$ID.inbox"
+REC=''
+for _ in $(seq 1 240); do
+  REC=$(ls "$INBOX_DIR"/*.msg "$INBOX_DIR"/handled/*.msg 2>/dev/null | head -1)
+  [ -n "$REC" ] && break
+  sleep 0.25
+done
+[ -n "$REC" ] || fail "exact-id fm-send wrote no steering inbox record"
+GOT=$(fm_task_inbox_body "$REC")
+case "$GOT" in
+  "${FM_FROMFIRST_MARK}corr="*" ${REQUEST}") : ;;
+  *) fail "inbox record does not carry marker + correlation + request"$'\n'"--- body ---"$'\n'"$(printf '%s' "$GOT" | od -An -tx1)" ;;
+esac
+[ "$(printf '%s' "$GOT" | grep -o 'fm-from-firstmate' | wc -l | tr -d ' ')" = 1 ] \
+  || fail "inbox record does not contain exactly one from-firstmate marker"$'\n'"--- body ---"$'\n'"$(printf '%s' "$GOT" | od -An -tx1)"
+wait_for_prompt 'instruction waiting' \
+  || fail "real Pi did not ring the exact-id steering doorbell"
+printf 'evidence: exact-id record-hex=%s\n' "$(printf '%s' "$GOT" | od -An -tx1 | tr -d ' \n')"
 pass "real Pi/Herdr: exact-id FM_HOME send delivers exactly one from-firstmate marker"
 wait_for_idle || fail "real Pi did not become idle after the exact-id capture"
 

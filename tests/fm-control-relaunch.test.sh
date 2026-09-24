@@ -1723,9 +1723,17 @@ SH
   chmod +x "$dir/fakebin/tmux"
 
   out=$(run_spawn "$dir" rl37 --relaunch --harness claude); rc=$?
-  expect_code 1 "$rc" "relaunching from symlinked metadata should refuse"
-  assert_contains "$out" "task record resolves outside its authorized directory" \
-    "relaunch did not identify the unsafe task record"
+  if [ "${NO_MISTAKES_GATE+x}" = x ]; then
+    # Under the gate the structural record-safety check refuses the same
+    # unsafe record earlier, at lab authorization, with its own code and note.
+    expect_code 3 "$rc" "relaunching from symlinked metadata should refuse under the gate"
+    assert_contains "$out" "a task record points outside the lab" \
+      "gate refusal did not name the unsafe task record"
+  else
+    expect_code 1 "$rc" "relaunching from symlinked metadata should refuse"
+    assert_contains "$out" "task record resolves outside its authorized directory" \
+      "relaunch did not identify the unsafe task record"
+  fi
   [ -L "$meta" ] || fail "relaunch replaced or removed the symlinked record"
   assert_present "$target" "relaunch removed the foreign record target"
   assert_absent "$dir/relaunch-endpoint-inspected" \

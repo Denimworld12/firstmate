@@ -146,8 +146,10 @@ esac
 # shellcheck source=bin/fm-gate-refuse-lib.sh
 . "$SCRIPT_DIR/fm-gate-refuse-lib.sh"
 # Fail closed before any fleet mutation: a no-mistakes gate agent must never
-# drive a crewmate's lifecycle (see bin/fm-gate-refuse-lib.sh).
-fm_refuse_if_gate_agent
+# drive a crewmate's lifecycle (see bin/fm-gate-refuse-lib.sh). The backend
+# comes from recorded task metadata, not the environment, so the env-backend
+# check is skipped.
+fm_refuse_if_gate_agent . '' 1
 
 if [ -z "${FM_HOME+x}" ] || [ -z "${FM_HOME:-}" ]; then
   echo "error: FM_HOME is not set; fm-control refuses to resolve a task without an explicit firstmate home" >&2
@@ -341,6 +343,8 @@ fi
 fm_backend_validate_task_endpoint "$META" "$ID" || exit 1
 BACKEND=$FM_BACKEND_VALIDATED_BACKEND
 T=$FM_BACKEND_VALIDATED_TARGET
+fm_gate_lab_assert_backend "$BACKEND"
+fm_gate_lab_assert_target "$BACKEND" "$T"
 LABEL="fm-$ID"
 RECORDED_HARNESS=$(fm_meta_get "$META" harness)
 KIND=$(fm_meta_get "$META" kind)

@@ -223,8 +223,9 @@ FM_ROOT="${FM_ROOT_OVERRIDE:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 # shellcheck source=bin/fm-gate-refuse-lib.sh
 . "$SCRIPT_DIR/fm-gate-refuse-lib.sh"
 # Fail closed before any fleet mutation: a no-mistakes gate agent must never steer
-# a crewmate (see bin/fm-gate-refuse-lib.sh).
-fm_refuse_if_gate_agent
+# a crewmate (see bin/fm-gate-refuse-lib.sh). The backend comes from resolved
+# task metadata, not the environment, so the env-backend check is skipped.
+fm_refuse_if_gate_agent . '' 1
 
 if [ -z "${FM_HOME+x}" ] || [ -z "${FM_HOME:-}" ]; then
   echo "error: FM_HOME is not set; fm-send refuses to resolve targets without an explicit firstmate home" >&2
@@ -444,6 +445,9 @@ fm_send_resolve_target() { # <raw-target>
 RAW_TARGET=$1
 fm_send_resolve_target "$RAW_TARGET" || exit 1
 T=$RESOLVED_TARGET
+# A gate lab steer may only reach the lab's own backend target (no-op outside
+# an authorized lab call).
+fm_gate_lab_assert_target "$TARGET_BACKEND" "$T"
 shift
 
 # Supervision lease guard: a steer is overlap territory between the two Pi

@@ -47,8 +47,6 @@ command -v herdr >/dev/null 2>&1 || { echo "skip: herdr not found"; exit 0; }
 command -v jq >/dev/null 2>&1 || { echo "skip: jq not found (required by the herdr adapter)"; exit 0; }
 command -v treehouse >/dev/null 2>&1 || { echo "skip: treehouse not found (required by fm-spawn.sh)"; exit 0; }
 
-export FM_GATE_REFUSE_BYPASS=1
-
 # shellcheck source=tests/herdr-test-safety.sh
 . "$ROOT/tests/herdr-test-safety.sh"
 # This suite asserts that HERDR_ENV=1 alone selects the backend, and it runs
@@ -65,6 +63,14 @@ herdr_forget_inherited_pane
 # The dedicated regression is
 # tests/fm-backend.test.sh:test_spawn_symlinked_project_prefix_avoids_false_refusal.
 TMP_ROOT=$(mktemp -d "$(cd "${TMPDIR:-/tmp}" && pwd -P)/fm-backend-autodetect-smoke.XXXXXX")
+fm_test_lab_adopt "$TMP_ROOT"
+# The spawn below is a real fm-spawn.sh worktree-providing launch, so the
+# pane's `treehouse get` must resolve to a lab-contained fake that yields a
+# git worktree inside TMP_ROOT - the gate lab authorization refuses the real
+# pool allocator.
+fm_test_fake_treehouse "$TMP_ROOT/fakebin" "$TMP_ROOT/treehouse-pool" \
+  || fail "could not install the lab-contained treehouse fake"
+export PATH="$TMP_ROOT/fakebin:$PATH"
 HERDR_LAB_HELPER="$ROOT/bin/fm-herdr-lab.sh"
 HERDR_LAB_SESSION=$("$HERDR_LAB_HELPER" name fm-autodetect-smoke-concurrency-h3) || {
   rm -rf "$TMP_ROOT"
@@ -91,8 +97,12 @@ trap on_exit EXIT
 
 # --- scratch world: FM_HOME with NO backend config, one throwaway project ---
 
+# Under a no-mistakes gate the lifecycle calls must target a structurally
+# verified lab home, so FM_HOME points inside the adopted TMP_ROOT; the
+# STATE/DATA/CONFIG overrides below keep the same layout they always had.
+SCRATCH_HOME="$TMP_ROOT/home"
 STATE="$TMP_ROOT/state"; DATA="$TMP_ROOT/data"; CONFIG="$TMP_ROOT/config"
-mkdir -p "$STATE" "$DATA/$ID" "$CONFIG"
+mkdir -p "$SCRATCH_HOME/state" "$STATE" "$DATA/$ID" "$CONFIG"
 # Backend auto-detection is what is under test here, so opt out of the default-on
 # presentation projection and keep the assertions on the flat per-home workspace.
 printf 'off\n' > "$CONFIG/herdr-presentation-spaces"
@@ -118,6 +128,7 @@ git -C "$PROJ" remote add origin "file://$PROJ.origin.git"
 
 OUT_FILE="$TMP_ROOT/spawn.out"; ERR_FILE="$TMP_ROOT/spawn.err"
 env -u TMUX -u FM_BACKEND PATH="$PATH" HERDR_ENV=1 \
+  FM_HOME="$SCRATCH_HOME" \
   FM_ROOT_OVERRIDE="$ROOT" FM_STATE_OVERRIDE="$STATE" FM_DATA_OVERRIDE="$DATA" \
   FM_CONFIG_OVERRIDE="$CONFIG" FM_PROJECTS_OVERRIDE="$TMP_ROOT/unused-projects" \
   FM_SPAWN_NO_GUARD=1 \
@@ -169,7 +180,8 @@ pass "real herdr: the auto-detected spawn's launch command actually ran in the h
 # --- teardown completes the trivial spawn/teardown cycle --------------------
 
 TEARDOWN_OUT="$TMP_ROOT/teardown.out"
-FM_ROOT_OVERRIDE="$ROOT" FM_STATE_OVERRIDE="$STATE" FM_DATA_OVERRIDE="$DATA" \
+FM_HOME="$SCRATCH_HOME" \
+  FM_ROOT_OVERRIDE="$ROOT" FM_STATE_OVERRIDE="$STATE" FM_DATA_OVERRIDE="$DATA" \
   FM_CONFIG_OVERRIDE="$CONFIG" \
   "$ROOT/bin/fm-teardown.sh" "$ID" >"$TEARDOWN_OUT" 2>&1
 status=$?

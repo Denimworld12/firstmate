@@ -38,14 +38,25 @@ umask 022
 # shellcheck source=tests/git-config-helpers.sh
 . "$(dirname "${BASH_SOURCE[0]}")/git-config-helpers.sh"
 
-# Exempt firstmate's own test suite from the gate-lifecycle refusal
-# (bin/fm-gate-refuse-lib.sh). The no-mistakes gate runs this suite FROM a gate
-# worktree - the exact environment that guard refuses - so without this every
-# test that drives the real fm-spawn/fm-send/fm-teardown would be refused during
-# firstmate's own validation. A confused gate agent never sources this helper, so
-# the boundary against the real hazard is unaffected. tests/fm-gate-refuse.test.sh
-# strips this to verify real refusal.
-export FM_GATE_REFUSE_BYPASS=1
+# Let firstmate's own test suite drive the REAL fm-spawn/fm-send/fm-teardown
+# under the gate-lifecycle refusal (bin/fm-gate-refuse-lib.sh). The no-mistakes
+# gate runs this suite FROM a gate worktree - the exact environment that guard
+# refuses - so fixture roots created through fm_test_tmproot below are marked
+# as disposable lab homes with bin/fm-lab-home.sh: the structural lab
+# authorization then proves on disk what the retired FM_GATE_REFUSE_BYPASS env
+# flag asserted on the honor system (temp-rooted, helper-marked,
+# backend-isolated). Suites that build fixture homes outside fm_test_tmproot
+# mark their scratch root with bin/fm-lab-home.sh adopt instead.
+FM_TEST_LAB_HOME_HELPER="$(cd "$(dirname "${BASH_SOURCE[0]}")/../bin" && pwd -P)/fm-lab-home.sh"
+
+fm_test_lab_adopt() { # <dir>
+  "$FM_TEST_LAB_HOME_HELPER" adopt "$1" >/dev/null
+}
+
+# Arms the test-only seams bin/ scripts expose (e.g. fm-afk-launch.sh's
+# FM_TEST_HARNESS harness pin). Production processes never export it, so a
+# leaked seam variable stays inert outside a suite.
+export FM_TEST_SEAM=1
 
 # Clear the task-worker marker bin/fm-spawn.sh exports into ship and scout
 # panes. This suite builds git-init fixture repositories whose primary checkout
@@ -110,6 +121,31 @@ FM_TEST_OWNER_IDENTITY=$(fm_test_pid_identity "$$") || {
   rm -f "$FM_TEST_CLEANUP_REGISTRY"
   return 1
 }
+
+# A private tmux socket dir for the whole suite, marked as a lab dir so a case
+# driving real tmux under the gate lands on a lab server rather than the
+# default one (bin/fm-gate-refuse-lib.sh's tmux containment). Created at
+# source time because fm_test_tmproot runs inside command substitution, where
+# an export could never reach the suite shell.
+FM_TEST_TMUX_SOCKDIR=$(mktemp -d "${TMPDIR:-/tmp}/fm-test-tmux-sock.XXXXXX") || {
+  rm -f "$FM_TEST_CLEANUP_REGISTRY"
+  return 1
+}
+printf '%s\n' "$FM_TEST_TMUX_SOCKDIR" >> "$FM_TEST_CLEANUP_REGISTRY"
+fm_test_lab_adopt "$FM_TEST_TMUX_SOCKDIR" || {
+  rm -rf "$FM_TEST_TMUX_SOCKDIR" "$FM_TEST_CLEANUP_REGISTRY"
+  return 1
+}
+export TMUX_TMPDIR="$FM_TEST_TMUX_SOCKDIR"
+
+# A suite launched from inside a Herdr/cmux/tmux pane inherits that pane's
+# backend identity (HERDR_ENV, HERDR_SESSION, CMUX_WORKSPACE_ID, TMUX), which
+# would steer backend-resolving fixture calls at the ambient real backend
+# instead of the suite's own fixtures - the same leak herdr-test-safety's
+# herdr_forget_inherited_pane scrubs for the per-home container suites. Suites
+# that mean to exercise a backend set its markers explicitly per invocation.
+unset TMUX HERDR_ENV HERDR_PANE_ID HERDR_TAB_ID HERDR_WORKSPACE_ID \
+  HERDR_SOCKET_PATH HERDR_SESSION CMUX_WORKSPACE_ID
 
 # --- process-event runner reaping -------------------------------------------
 #
@@ -182,7 +218,8 @@ fm_test_tmproot() {
   root=$(mktemp -d "$tmp_base/${prefix}.XXXXXX") || return 1
   root=$(cd -P -- "$root" && pwd -P) || return 1
   if ! printf '%s\n%s\n' "$$" "$FM_TEST_OWNER_IDENTITY" > "$root/.fm-test-fixture" ||
-    ! printf '%s\n' "$root" >> "$FM_TEST_CLEANUP_REGISTRY"; then
+    ! printf '%s\n' "$root" >> "$FM_TEST_CLEANUP_REGISTRY" ||
+    ! fm_test_lab_adopt "$root"; then
     rm -rf "$root"
     return 1
   fi
@@ -262,10 +299,11 @@ fi
 # actually ran. Setting one to 0 (or FM_LIVE=0) turns it off; a guard's own
 # variable wins over FM_LIVE.
 #
-# Sourcing this library also exports FM_GATE_REFUSE_BYPASS=1, which is what
-# lets a live guard drive the real fm-spawn/fm-send/fm-teardown from inside a
-# no-mistakes gate worktree instead of being refused by
-# bin/fm-gate-refuse-lib.sh.
+# Sourcing this library adopts every fm_test_tmproot fixture root as a
+# structural lab home and points TMUX_TMPDIR at an adopted private socket
+# dir, which is what lets a live guard drive the real fm-spawn/fm-send/
+# fm-teardown from inside a no-mistakes gate worktree instead of being
+# refused by bin/fm-gate-refuse-lib.sh.
 
 fm_live_gate() {
   local policy=$1 vars=$2

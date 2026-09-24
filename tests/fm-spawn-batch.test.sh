@@ -16,10 +16,29 @@ SPAWN="$ROOT/bin/fm-spawn.sh"
 TMP_ROOT=$(fm_test_tmproot fm-spawn-batch)
 export FM_BACKEND=tmux
 
+# Under a no-mistakes gate, lifecycle calls need a structurally authorized lab
+# home (FM_HOME='' would resolve to the real checkout and be refused, correctly).
+# Outside a gate the suite keeps the ambient-default resolution it always used.
+GATE_LAB_HOME="$TMP_ROOT/home"
+mkdir -p "$GATE_LAB_HOME/state" "$GATE_LAB_HOME/data"
+if [ "${NO_MISTAKES_GATE:-}" = 1 ]; then
+  SPAWN_HOME="$GATE_LAB_HOME"
+else
+  SPAWN_HOME=''
+fi
+
+# Under a gate a ship spawn must resolve treehouse to a lab-local binary. These
+# tests never reach worktree provisioning (they fail at the missing-brief check)
+# so a no-op stub is enough to satisfy the structural check.
+FAKEBIN="$TMP_ROOT/fakebin"; mkdir -p "$FAKEBIN"
+printf '#!/usr/bin/env bash\nexit 0\n' > "$FAKEBIN/treehouse"
+chmod +x "$FAKEBIN/treehouse"
+
 # Clear ambient firstmate overrides so the behavior test owns its environment.
 run_spawn() {
   FM_ROOT_OVERRIDE='' \
-    FM_HOME='' \
+    FM_HOME="$SPAWN_HOME" \
+    PATH="$FAKEBIN:$PATH" \
     FM_STATE_OVERRIDE='' \
     FM_DATA_OVERRIDE='' \
     FM_PROJECTS_OVERRIDE='' \
@@ -87,13 +106,13 @@ test_projects_path_scoping() {
     git -C "$projects/alpha" init -q || fail "$label: could not initialize project fixture"
     if [ "$use_override" = yes ]; then
       out=$(FM_ROOT_OVERRIDE='' FM_STATE_OVERRIDE='' FM_DATA_OVERRIDE='' FM_CONFIG_OVERRIDE='' \
-        FM_HOME="$home" FM_PROJECTS_OVERRIDE="$projects" FM_SPAWN_NO_GUARD=1 \
+        PATH="$FAKEBIN:$PATH" FM_HOME="$home" FM_PROJECTS_OVERRIDE="$projects" FM_SPAWN_NO_GUARD=1 \
         "$SPAWN" "$id" projects/alpha codex --mode no-mistakes --yolo off 2>&1)
     else
       mkdir -p "$home/projects/alpha"
       git -C "$home/projects/alpha" init -q || fail "$label: could not initialize home project fixture"
       out=$(FM_ROOT_OVERRIDE='' FM_STATE_OVERRIDE='' FM_DATA_OVERRIDE='' FM_PROJECTS_OVERRIDE='' FM_CONFIG_OVERRIDE='' \
-        FM_HOME="$home" FM_SPAWN_NO_GUARD=1 \
+        PATH="$FAKEBIN:$PATH" FM_HOME="$home" FM_SPAWN_NO_GUARD=1 \
         "$SPAWN" "$id" projects/alpha codex --mode no-mistakes --yolo off 2>&1)
     fi
     status=$?
