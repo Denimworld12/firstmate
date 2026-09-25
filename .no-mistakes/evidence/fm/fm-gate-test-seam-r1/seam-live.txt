@@ -1,0 +1,11 @@
+unarmed marker-shaped token (actual Pi detection via PI_CODING_AGENT)
+fm-afk-contract: unknown option 'disposable validation'
+fm-afk-launch: the away daemon is no longer launched on pi; the away-posture record is the posture there (run bin/fm-afk-launch.sh enter and stop)
+exit=1
+armed known Claude token (supervision-host refusal)
+fm-afk-launch: the away daemon is not launched on this claude home, which runs the supervision host (config/supervision-host); the away-posture record is the posture here (run bin/fm-afk-launch.sh enter and stop)
+exit=1
+armed invalid token (fallback to actual Pi)
+fm-afk-launch: the away daemon is no longer launched on pi; the away-posture record is the posture there (run bin/fm-afk-launch.sh enter and stop)
+exit=1
+fm-afk-launch: away mode stopped; no daemon terminal was running, .afk cleared, and the posture record archived
