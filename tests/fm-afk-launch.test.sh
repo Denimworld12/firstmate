@@ -852,6 +852,8 @@ unit_supervision_host_claude_home_runs_no_away_daemon() {
   st=$(mktemp -d "${TMPDIR:-/tmp}/fm-afk-host.XXXXXX")
   mkdir -p "$st/state" "$st/config"
   : > "$st/config/supervision-host"
+  # The dialog mirror the session's hooks keep.
+  printf '{"seq":1,"tag":"captain","text":"watch the fleet"}\n' > "$st/state/.host-mirror.jsonl"
   enter_posture "$st" || fail "supervision host: could not enter fixture posture"
   out=$(FM_HOME="$st" FM_STATE_OVERRIDE="$st/state" "$LAUNCH" start-native 2>&1)
   rc=$?
@@ -872,6 +874,20 @@ unit_supervision_host_claude_home_runs_no_away_daemon() {
   if [ "$rc" -ne 0 ] || ! printf '%s' "$out" | grep -F 'Quiet mode needs nothing on this home' >/dev/null; then
     fail "supervision host: quiet-check must say quiet mode needs nothing on a claude host home (rc=$rc): $out"
   fi
+  # Without a readable dialog mirror every attended wake reaches main, so quiet
+  # mode is not already running there.
+  mv "$st/state/.host-mirror.jsonl" "$st/state/.host-mirror.saved"
+  out=$(FM_HOME="$st" FM_STATE_OVERRIDE="$st/state" "$LAUNCH" quiet-check 2>&1)
+  rc=$?
+  if [ "$rc" -eq 0 ] || [ -n "$out" ]; then
+    fail "supervision host: quiet-check without the dialog mirror must not claim the attended host keeps routine wakes off main (rc=$rc): $out"
+  fi
+  out=$(FM_HOME="$st" FM_STATE_OVERRIDE="$st/state" FM_AFK_MODE=quiet \
+    bash -c '. "$1"; fm_afk_launch_daemon_allowed' _ "$LAUNCH" 2>&1)
+  rc=$?
+  [ "$rc" -eq 0 ] || fail "supervision host: without the dialog mirror the quiet daemon must not be refused as if the attended host ran (rc=$rc): $out"
+  mv "$st/state/.host-mirror.saved" "$st/state/.host-mirror.jsonl"
+  pass "supervision host: quiet-check and the quiet daemon refusal require the dialog mirror the attended host feeds"
   # Without a tool the host's turns need, the host passes every attended close
   # to main, so quiet mode is not already running there: quiet-check says
   # nothing and a quiet entry falls through to the daemon.
@@ -970,6 +986,7 @@ unit_supervision_host_other_harnesses_run_no_away_daemon() {
   done
   daemon_allowed kimi >/dev/null || fail "kimi has no arm owner to run the host, so it must keep the away daemon"
   printf 'claude\n' > "$st/config/supervision-host"
+  printf '{"seq":1,"tag":"captain","text":"watch the fleet"}\n' > "$st/state/.host-mirror.jsonl"
   for harness in cursor codex; do
     out=$(daemon_allowed "$harness" quiet); rc=$?
     [ "$rc" -ne 0 ] || fail "$harness: quiet mode must launch no daemon where the attended host runs"
