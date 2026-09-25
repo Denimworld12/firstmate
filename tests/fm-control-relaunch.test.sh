@@ -1534,8 +1534,16 @@ test_secondmate_checkpoint_refuses_unreadable_child_state() {
   printf '%s\n' "fm-sm5" > "$dir/fake/windows"
   printf '%s' "$dir/smhome" > "$dir/fake/cwd"
   out=$(run_control "$dir" sm5 relaunch); rc=$?
-  expect_code 1 "$rc" "a non-readable child record should refuse"
-  assert_contains "$out" "not a readable regular file" "the refusal should name the unreadable child record"
+  if [ "${NO_MISTAKES_GATE+x}" = x ]; then
+    # Under the gate the structural descendant-record check refuses the same
+    # unreadable child record earlier, at lab authorization.
+    expect_code 3 "$rc" "a non-readable child record should refuse under the gate"
+    assert_contains "$out" "a task record points outside the lab" \
+      "gate refusal did not name the unreadable child record"
+  else
+    expect_code 1 "$rc" "a non-readable child record should refuse"
+    assert_contains "$out" "not a readable regular file" "the refusal should name the unreadable child record"
+  fi
   [ "$(cat "$dir/fake/command")" = claude ] || fail "child record failure must not stop the secondmate"
   pass "fm-control relaunch: unreadable child records fail checkpoint"
   if [ "$(id -u)" = 0 ]; then
@@ -1547,9 +1555,15 @@ test_secondmate_checkpoint_refuses_unreadable_child_state() {
   chmod 000 "$dir/smhome/state"
   out=$(run_control "$dir" sm5 relaunch); rc=$?
   chmod 755 "$dir/smhome/state"
-  expect_code 1 "$rc" "an unlistable state directory should refuse"
-  assert_contains "$out" "no readable state directory" \
-    "the refusal should name the unlistable home state directory"
+  if [ "${NO_MISTAKES_GATE+x}" = x ]; then
+    expect_code 3 "$rc" "an unlistable state directory should refuse under the gate"
+    assert_contains "$out" "a task record points outside the lab" \
+      "gate refusal did not name the unlistable child state"
+  else
+    expect_code 1 "$rc" "an unlistable state directory should refuse"
+    assert_contains "$out" "no readable state directory" \
+      "the refusal should name the unlistable home state directory"
+  fi
   [ "$(cat "$dir/fake/command")" = claude ] || fail "unlistable child state must not stop the secondmate"
   pass "fm-control relaunch: unlistable state fails checkpoint"
 }

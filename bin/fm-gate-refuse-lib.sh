@@ -85,6 +85,10 @@
 #      home= canonicalizes inside the lab dir, backend= plus
 #      herdr_session= satisfy the same isolation rules, remote_host=
 #      requires ssh in the lab, and a non-regular .meta file refuses.
+#      The scan descends into every secondmate record's home, the same
+#      descendant homes recursive teardown enters: each must lie inside the
+#      lab with its state and data dirs (symlinks followed), and its records
+#      pass the same rules; a descendant cycle refuses.
 #      worktree= and project= are deliberately NOT location-checked:
 #      a real treehouse or Orca spawn legitimately lands its worktree in
 #      the shared pool outside the lab dir, so pinning it inside would
@@ -353,18 +357,21 @@ fm_gate_lab_parent_chain_ok() { # <home>
   return 0
 }
 
-# Every task record in the lab's state dir must stay bound to the lab: a
-# recorded secondmate home= canonically contained (worktree= and project=
-# are deliberately unchecked - the shared real pool legitimately holds
-# them), recorded backend isolated by the same rules, remote routes through
-# lab ssh. Non-regular or unreadable records refuse.
-fm_gate_lab_metas_ok() { # <home>
-  local state_dir meta backend session host c
-  state_dir="${FM_STATE_OVERRIDE:-$1/state}"
+# Every task record in a state dir must stay bound to the lab: a recorded
+# home= canonically contained (worktree= and project= are deliberately
+# unchecked - the shared real pool legitimately holds them), recorded
+# backend isolated by the same rules, remote routes through lab ssh. A
+# secondmate record's home (home=, else worktree=, as teardown resolves it)
+# is a descendant home recursive teardown will enter, so it must lie inside
+# the lab with its state and data dirs, and its own records pass this same
+# scan. Non-regular or unreadable records, and a descendant cycle, refuse.
+fm_gate_lab_metas_ok() { # <state-dir> [seen-homes]
+  local state_dir=$1 seen=${2:-|} meta backend session host c kind child
   [ -d "$state_dir" ] || return 0
+  [ -r "$state_dir" ] && [ -x "$state_dir" ] || return 1
   for meta in "$state_dir"/*.meta; do
     [ -e "$meta" ] || [ -L "$meta" ] || continue
-    [ -f "$meta" ] && [ ! -L "$meta" ] || return 1
+    [ -f "$meta" ] && [ ! -L "$meta" ] && [ -r "$meta" ] || return 1
     host=$(sed -n 's/^remote_host=//p' "$meta" | tail -1)
     if [ -n "$host" ]; then
       fm_gate_lab_remote_ok || return 1
@@ -386,6 +393,16 @@ fm_gate_lab_metas_ok() { # <home>
     case "$c" in '' | '-') ;;
       *) fm_gate_lab_path_inside "$c" || return 1 ;;
     esac
+    kind=$(sed -n 's/^kind=//p' "$meta" | tail -1)
+    [ "$kind" = secondmate ] || continue
+    child=$c
+    [ -n "$child" ] || child=$(sed -n 's/^worktree=//p' "$meta" | tail -1)
+    fm_gate_lab_path_inside "$child" \
+      && fm_gate_lab_path_inside "$child/state" \
+      && fm_gate_lab_path_inside "$child/data" || return 1
+    child=$(fm_lab_home_canon_loose "$child") || return 1
+    case "$seen" in *"|$child|"*) return 1 ;; esac
+    fm_gate_lab_metas_ok "$child/state" "$seen$child|" || return 1
   done
   return 0
 }
@@ -445,7 +462,7 @@ fm_gate_lab_authorize() { # <home> [--backend hint] [skip-env-backend]
       return 1
     }
   fi
-  fm_gate_lab_metas_ok "$home" || {
+  fm_gate_lab_metas_ok "${FM_STATE_OVERRIDE:-$home/state}" || {
     fm_gate_lab_fail "a task record points outside the lab"
     return 1
   }

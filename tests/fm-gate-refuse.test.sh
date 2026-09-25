@@ -428,6 +428,49 @@ test_lab_meta_outside_path_refuses() {
   pass "fm-gate-refuse-lib: a lab task record pointing outside the lab refuses"
 }
 
+test_lab_descendant_homes_stay_in_lab() {
+  local home child fakebin session out rc
+  # Recursive secondmate teardown enters every descendant home, so the scan
+  # must hold each one to the lab: a clean descendant authorizes; a child
+  # record on another lab's Herdr session, a child state dir linked outside
+  # the lab, a secondmate home outside the lab, or a cycle refuses.
+  fakebin=$(make_lab_fakebin "$LAB/desc-fake")
+  session="fm-lab-gate-desc-$$-$RANDOM"
+  "$LAB_HELPER" record-herdr-session "$OTHER_LAB" "$session" \
+    || fail "could not record lab B's Herdr session"
+  home="$LAB/desc-home"; child="$LAB/desc-child"
+  mkdir -p "$home/state" "$home/data" "$home/config" "$child/state" "$child/data"
+  fm_write_meta "$home/state/mate.meta" "window=sess:fm-mate" "kind=secondmate" "home=$child"
+  out=$(run_lib_call "$NORMAL_CWD" "$home" "PATH=$fakebin:/usr/bin:/bin" "FM_ROOT=$WORLD/auth-root"); rc=$?
+  expect_code 0 "$rc" "helper: a descendant home inside the lab must authorize"
+
+  fm_write_meta "$child/state/foreign.meta" "window=$session:p1" "backend=herdr" \
+    "herdr_session=$session" "kind=ship"
+  out=$(run_lib_call "$NORMAL_CWD" "$home" "PATH=$fakebin:/usr/bin:/bin" "FM_ROOT=$WORLD/auth-root"); rc=$?
+  expect_code 3 "$rc" "helper: a descendant record on lab B's session must refuse"
+  assert_contains "$out" "a task record points outside the lab" "helper: descendant endpoint refusal must name the meta check"
+  rm -f "$child/state/foreign.meta"
+
+  mkdir -p "$WORLD/desc-real-state"
+  rm -rf "${child:?}/state"
+  ln -s "$WORLD/desc-real-state" "$child/state"
+  out=$(run_lib_call "$NORMAL_CWD" "$home" "PATH=$fakebin:/usr/bin:/bin" "FM_ROOT=$WORLD/auth-root"); rc=$?
+  expect_code 3 "$rc" "helper: a descendant whose state links outside the lab must refuse"
+  rm -f "$child/state"; mkdir -p "$child/state"
+
+  mkdir -p "$WORLD/desc-real-home/state"
+  fm_write_meta "$home/state/mate.meta" "window=sess:fm-mate" "kind=secondmate" \
+    "worktree=$WORLD/desc-real-home"
+  out=$(run_lib_call "$NORMAL_CWD" "$home" "PATH=$fakebin:/usr/bin:/bin" "FM_ROOT=$WORLD/auth-root"); rc=$?
+  expect_code 3 "$rc" "helper: a secondmate home outside the lab must refuse"
+
+  fm_write_meta "$home/state/mate.meta" "window=sess:fm-mate" "kind=secondmate" "home=$child"
+  fm_write_meta "$child/state/back.meta" "window=sess:fm-back" "kind=secondmate" "home=$home"
+  out=$(run_lib_call "$NORMAL_CWD" "$home" "PATH=$fakebin:/usr/bin:/bin" "FM_ROOT=$WORLD/auth-root"); rc=$?
+  expect_code 3 "$rc" "helper: a descendant home cycle must refuse"
+  pass "fm-gate-refuse-lib: every descendant secondmate home is held to the lab boundary"
+}
+
 test_lab_registered_in_real_registry_refuses() {
   local home fakeroot fakebin out rc
   home="$LAB/reg-home"; mkdir -p "$home/state" "$home/data" "$home/config"
@@ -788,6 +831,7 @@ test_lab_herdr_default_session_refuses
 test_lab_herdr_named_session_authorizes
 test_lab_herdr_other_lab_session_refuses
 test_lab_meta_outside_path_refuses
+test_lab_descendant_homes_stay_in_lab
 test_lab_registered_in_real_registry_refuses
 test_lab_parent_chain_escape_refuses
 test_spawn_refuses_and_admits
