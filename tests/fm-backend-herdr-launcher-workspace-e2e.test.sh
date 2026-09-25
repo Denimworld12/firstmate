@@ -48,13 +48,6 @@ herdr_forget_inherited_pane
 
 TMP_ROOT=$(mktemp -d "$(cd "${TMPDIR:-/tmp}" && pwd -P)/fm-herdr-launcher-e2e.XXXXXX")
 fm_test_lab_adopt "$TMP_ROOT"
-# Spawns below are real fm-spawn.sh worktree-providing launches, so the pane's
-# `treehouse get` must resolve to a lab-contained fake that yields a git
-# worktree inside TMP_ROOT - the gate lab authorization refuses the real pool
-# allocator.
-fm_test_fake_treehouse "$TMP_ROOT/fakebin" "$TMP_ROOT/treehouse-pool" \
-  || { rm -rf "$TMP_ROOT"; printf 'not ok - could not install the lab-contained treehouse fake\n' >&2; exit 1; }
-export PATH="$TMP_ROOT/fakebin:$PATH"
 HERDR_LAB_HELPER="$ROOT/bin/fm-herdr-lab.sh"
 HERDR_LAB_SESSION=$("$HERDR_LAB_HELPER" name fm-herdr-launcher-ws) || {
   rm -rf "$TMP_ROOT"

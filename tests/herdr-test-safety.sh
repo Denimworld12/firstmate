@@ -22,34 +22,6 @@ fm_test_lab_adopt() { # <dir>
   "$HERDR_TEST_SAFETY_DIR/bin/fm-lab-home.sh" adopt "$1" >/dev/null
 }
 
-# fm_test_fake_treehouse <fakebin> <worktree-parent>: an interactive treehouse
-# fake for REAL-pane e2e suites. bin/fm-spawn.sh sends `treehouse get` as text
-# into the spawned pane, then discovers the worktree by watching the pane's
-# cwd and requiring it to be a real linked git worktree of the pane's project
-# (spawn_worktree_isolated). The fake therefore `git worktree add`s a detached
-# worktree of the pane's current project under <worktree-parent> and execs a
-# shell inside it, which is what makes the pane's cwd a lab-contained path.
-# `return` and every other verb exit 0. Put the fakebin first on PATH for the
-# spawn call; under the gate lab authorization the resolved treehouse then
-# lives in a marked dir while a real pool allocation stays refused.
-fm_test_fake_treehouse() { # <fakebin> <worktree-parent>
-  local fakebin=$1 parent=$2
-  mkdir -p "$fakebin" "$parent" || return 1
-  cat > "$fakebin/treehouse" <<SH
-#!/usr/bin/env bash
-case "\${1:-}" in
-  get)
-    dir=\$(mktemp -d "$parent/wt.XXXXXX") || exit 1
-    git -C "\$PWD" worktree add --detach "\$dir" >/dev/null 2>&1 || exit 1
-    cd -- "\$dir" || exit 1
-    exec "\${SHELL:-/bin/bash}"
-    ;;
-  *) exit 0 ;;
-esac
-SH
-  chmod +x "$fakebin/treehouse"
-}
-
 # herdr_forget_inherited_pane: drop the Herdr PANE identity this test process
 # inherited from whatever terminal it was started in.
 #

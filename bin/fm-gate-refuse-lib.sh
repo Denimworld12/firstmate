@@ -51,6 +51,9 @@
 #      the temp root ${TMPDIR:-/tmp}. A copied or forged marker fails: the
 #      binding names the dir the token was minted for.
 #   2. The home is NOT the primary checkout (canonical FM_HOME != FM_ROOT).
+#      FM_STATE_OVERRIDE and FM_DATA_OVERRIDE, when set, must resolve inside
+#      the lab dir too - they redirect the task records and data the call
+#      writes, so an override outside the lab would reach real fleet state.
 #   3. The home's own secondmate registry (data/secondmates.md) binds only
 #      lab-contained local homes; a remote record additionally requires the
 #      ssh transport to resolve inside the lab (FM_SSH_BIN or `ssh` under the
@@ -58,7 +61,9 @@
 #   4. The checkout's real registry ($FM_ROOT/data/secondmates.md) binds
 #      nothing inside the lab dir - the lab home must not be a registered
 #      real secondmate.
-#   5. The backend the call could reach is the lab's own isolated target:
+#   5. The backend the call could reach is the lab's own isolated target -
+#      a socket dir or tool must resolve inside THIS lab dir, never another
+#      marked lab:
 #      - herdr: HERDR_SESSION names an fm-lab-* session, or `herdr` resolves
 #        inside the lab (a fake). The default session is never authorized.
 #      - tmux: TMUX_TMPDIR resolves inside the lab (private socket dir), or
@@ -84,9 +89,9 @@
 #
 # Post-resolution assertions (fm_gate_lab_assert_*): authorization at refusal
 # time can only see the environment, so entrypoints re-assert once arguments
-# resolve the true target - the spawn project path, the resolved backend, and
-# fm-send's resolved endpoint - inside the lab boundary. These are no-ops
-# outside an authorized lab call.
+# resolve the true target - the resolved backend and fm-send's resolved
+# endpoint - inside the lab boundary. These are no-ops outside an authorized
+# lab call.
 #
 # Everything else stays refused exactly as before: a real home keeps refusing
 # even with a copied marker, a malformed or incomplete lab refuses, and a
@@ -149,9 +154,9 @@ fm_gate_lab_fail() { # <reason>
 }
 
 # Canon-resolve a path (existing dir, or parent-canon + basename) and require
-# it to live inside the authorized lab dir. Used for the home's own records:
-# secondmate bindings, parent chains, task-record paths, spawn targets -
-# things a lab-owned operation may touch only inside its own lab.
+# it to live inside the authorized lab dir. Used for the home's own records
+# and state overrides, and for backend containment: a private socket dir or
+# fixture tool must belong to this lab, not merely to some marked lab.
 fm_gate_lab_path_inside() { # <path>
   local c
   c=$(fm_lab_home_canon_loose "$1" 2>/dev/null) || return 1
@@ -161,15 +166,7 @@ fm_gate_lab_path_inside() { # <path>
   return 1
 }
 
-# Canon-resolve a path and require it to live inside ANY marked lab dir.
-# Backend containment uses this wider scope - a private socket dir or fixture
-# tool living in another adopted test root is still a verified disposable lab
-# artifact, never the default server or a system binary.
-fm_gate_lab_path_in_a_lab() { # <path>
-  fm_lab_home_of_path "$1" >/dev/null 2>&1
-}
-
-# A tool binary that canonically resolves inside a marked lab dir (a fixture
+# A tool binary that canonically resolves inside the lab dir (a fixture
 # fake). With no argument override, PATH resolution decides - a missing tool
 # fails closed since it cannot be proven lab-contained.
 fm_gate_lab_bin_inside() { # <tool> [explicit-path]
@@ -178,13 +175,13 @@ fm_gate_lab_bin_inside() { # <tool> [explicit-path]
     bin=$(command -v "$tool" 2>/dev/null) || return 1
   fi
   [ -n "$bin" ] || return 1
-  fm_gate_lab_path_in_a_lab "$bin"
+  fm_gate_lab_path_inside "$bin"
 }
 
-# tmux containment: the server the call would reach must be private to a lab -
-# TMUX_TMPDIR inside a marked dir (private socket dir) or a lab-local `tmux`
-# binary. An ambient $TMUX naming a live socket outside a lab refuses: pane
-# targeting would hit a real server.
+# tmux containment: the server the call would reach must be private to the
+# lab - TMUX_TMPDIR inside the lab dir (private socket dir) or a lab-local
+# `tmux` binary. An ambient $TMUX naming a live socket outside the lab
+# refuses: pane targeting would hit a real server.
 fm_gate_lab_tmux_ok() {
   local sock
   if [ -n "${TMUX:-}" ]; then
@@ -192,12 +189,12 @@ fm_gate_lab_tmux_ok() {
     case "$sock" in
       /*)
         if [ -e "$sock" ]; then
-          fm_gate_lab_path_in_a_lab "$sock" || return 1
+          fm_gate_lab_path_inside "$sock" || return 1
         fi
         ;;
     esac
   fi
-  if [ -n "${TMUX_TMPDIR:-}" ] && fm_gate_lab_path_in_a_lab "$TMUX_TMPDIR"; then
+  if [ -n "${TMUX_TMPDIR:-}" ] && fm_gate_lab_path_inside "$TMUX_TMPDIR"; then
     return 0
   fi
   fm_gate_lab_bin_inside tmux
@@ -417,6 +414,11 @@ fm_gate_lab_authorize() { # <home> [--backend hint] [skip-env-backend]
     fm_gate_lab_fail "lab home must not be the primary checkout"
     return 1
   fi
+  if { [ -n "${FM_STATE_OVERRIDE:-}" ] && ! fm_gate_lab_path_inside "$FM_STATE_OVERRIDE"; } \
+      || { [ -n "${FM_DATA_OVERRIDE:-}" ] && ! fm_gate_lab_path_inside "$FM_DATA_OVERRIDE"; }; then
+    fm_gate_lab_fail "FM_STATE_OVERRIDE or FM_DATA_OVERRIDE resolves outside the lab"
+    return 1
+  fi
   fm_gate_lab_registry_ok "$home" || {
     fm_gate_lab_fail "secondmate registry does not stay inside the lab"
     return 1
@@ -476,14 +478,6 @@ fm_gate_lab_assert_active() {
 fm_gate_lab_refuse() { # <detail>
   echo "error: no-mistakes gate lab authorization refused - $1" >&2
   exit "$FM_GATE_REFUSE_EXIT"
-}
-
-# A filesystem path the call will create, remove, or mutate must resolve
-# inside the authorized lab dir.
-fm_gate_lab_assert_path() { # <path> <what>
-  fm_gate_lab_assert_active || return 0
-  fm_gate_lab_path_inside "$1" \
-    || fm_gate_lab_refuse "$2 ($1) is outside the disposable lab"
 }
 
 # The backend resolved after argument parsing must satisfy the same isolation

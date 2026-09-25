@@ -25,21 +25,29 @@
 #
 # A lab dir is itself a usable disposable FM_HOME (state/, data/, config/,
 # projects/ are created). For multi-home scenarios create additional homes
-# inside the same lab dir - every FM_HOME and path a lifecycle call touches
-# must resolve inside the one marked lab dir, and the backend target must be
-# the lab's own isolated session (Herdr fm-lab-*) or private tmux socket
-# (TMUX_TMPDIR inside the lab). A lab-launched primary also needs the gate
-# marker scrubbed from its environment (env -u NO_MISTAKES_GATE) - it is a
-# test fixture firstmate, not a gate agent.
+# inside the same lab dir - every FM_HOME, FM_STATE_OVERRIDE, and
+# FM_DATA_OVERRIDE a lifecycle call uses must resolve inside the one marked
+# lab dir, and the backend target must be the lab's own isolated session
+# (Herdr fm-lab-*) or private tmux socket (TMUX_TMPDIR inside this lab). A
+# lab-launched primary also needs the gate marker scrubbed from its
+# environment (env -u NO_MISTAKES_GATE) - it is a test fixture firstmate, not
+# a gate agent.
 #
-# Per-harness "primary in a lab" recipe: create the lab dir, point FM_HOME at
-# it (or a nested home), write the opt-in flag the scenario needs (e.g.
-# `touch $LAB/primary/config/supervision-host`), then launch the harness's own
-# CLI in a lab backend - `TMUX_TMPDIR="$LAB/tmux" tmux new-session -d` or a
-# named fm-lab-* Herdr session via bin/fm-herdr-lab.sh - with the machine's
-# existing login. claude -> `claude`, codex -> `codex`, cursor -> `cursor-agent`,
-# opencode -> `opencode`, grok -> `grok`, omp -> `omp`. An absent CLI or an
-# unavailable login is reported untested, never faked.
+# Per-harness "primary in a lab" recipe: create the lab dir, write the opt-in
+# flag the scenario needs (e.g. `touch $LAB/config/supervision-host`), then
+# start the harness's own CLI, with the machine's existing login, as the
+# session command on the lab's private socket:
+#   mkdir -p "$LAB/tmux"
+#   env -u NO_MISTAKES_GATE TMUX_TMPDIR="$LAB/tmux" tmux -L fm-lab \
+#     new-session -d -s primary -c "$PWD" -e FM_HOME="$LAB" <cli>
+# where <cli> is claude -> `claude`, codex -> `codex`, cursor ->
+# `cursor-agent`, opencode -> `opencode`, grok -> `grok`, omp -> `omp`.
+# Drive and stop it only through that socket
+# (`TMUX_TMPDIR="$LAB/tmux" tmux -L fm-lab send-keys|capture-pane|kill-server`);
+# the primary's own firstmate calls inherit $TMUX naming the same socket. A
+# Herdr primary uses a named fm-lab-* session via bin/fm-herdr-lab.sh
+# instead. An absent CLI or an unavailable login is reported untested, never
+# faked.
 
 fm_lab_home_error() { echo "fm-lab-home: $*" >&2; }
 
@@ -111,8 +119,8 @@ fm_lab_home_mark() { # <dir>
   printf '%s\n' "$canon_dir" > "$bindings/$token" || return 1
 }
 
-# fm_lab_home_walk <canon-path>: the marked ancestor walk shared by verify and
-# of_path - print the OUTERMOST dir under the temp root carrying a marker that
+# fm_lab_home_walk <canon-path>: the marked ancestor walk behind verify -
+# print the OUTERMOST dir under the temp root carrying a marker that
 # binds back to itself. A nested marked dir can never narrow authorization
 # away from the lab that contains it.
 fm_lab_home_walk() { # <canon-path>
@@ -153,15 +161,6 @@ fm_lab_home_verify() { # <fm_home>
   [ -n "$home" ] && [ -d "$home" ] || return 1
   canon_home=$(fm_lab_home_canon "$home") || return 1
   fm_lab_home_walk "$canon_home"
-}
-
-# fm_lab_home_of_path <path>: like verify, for a path that may not exist yet
-# (a private socket dir, a worktree about to be created). Resolves through the
-# canonical parent plus literal basename, then walks for a marked ancestor.
-fm_lab_home_of_path() { # <path>
-  local canon_path
-  canon_path=$(fm_lab_home_canon_loose "$1" 2>/dev/null) || return 1
-  fm_lab_home_walk "$canon_path"
 }
 
 fm_lab_home_create() { # <label>
@@ -213,7 +212,7 @@ fm_lab_home_teardown() { # <dir>
 }
 
 fm_lab_home_usage() {
-  sed -n '2,31p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,34p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
 }
 
 fm_lab_home_main() {

@@ -2831,9 +2831,6 @@ else
   WT=""
   BRIEF="$DATA/$ID/brief.md"
 fi
-# A gate lab spawn may only target a project inside the lab dir (no-op outside
-# an authorized lab call).
-fm_gate_lab_assert_path "$PROJ_ABS" "spawn project"
 if [ "$RELAUNCH" -eq 0 ] && [ "$KIND" != secondmate ] && [ "$BACKEND" != orca ]; then
   SPAWN_TREEHOUSE_PROJECT_LOCK=$(fm_treehouse_project_lock_path "$PROJ_ABS") || {
     echo "error: could not resolve the shared Treehouse project lock for $PROJ_ABS" >&2

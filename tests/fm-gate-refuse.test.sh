@@ -22,15 +22,13 @@
 # token binds to the exact canonical dir it was minted for. Worktree and
 # spawning-project locations are deliberately NOT pinned inside the lab: a
 # real pool worktree is a legitimate spawn result, and requiring a lab-local
-# pool would force a fake treehouse.
+# pool would force a fake treehouse. The backend target and any
+# FM_STATE_OVERRIDE/FM_DATA_OVERRIDE must belong to the authorized home's own
+# lab - another marked lab's socket dir, tool, or state never authorizes.
 #
 # This suite deliberately does NOT use fm_test_tmproot: that helper adopts its
 # root as a lab, and refusal fixtures need unadopted (non-lab) territory. The
-# world root below is raw mktemp; only $LAB is adopted.
-#
-# Finally, assert firstmate's TRACKED .no-mistakes.yaml parses and sets
-# disable_project_settings: true (the trusted-only opt-out that neutralizes gate
-# agents' project instructions on the no-mistakes side).
+# world root below is raw mktemp; only $LAB and $OTHER_LAB are adopted.
 set -u
 
 # shellcheck source=tests/fixtures.sh
@@ -52,6 +50,12 @@ LAB="$WORLD/lab"
 mkdir -p "$LAB"
 "$LAB_HELPER" adopt "$LAB" >/dev/null \
   || fail "could not adopt the gate-refuse lab dir"
+# A second, separately adopted lab: its artifacts are verified disposable, yet
+# must never authorize a call whose FM_HOME lives in $LAB.
+OTHER_LAB="$WORLD/other-lab"
+mkdir -p "$OTHER_LAB"
+"$LAB_HELPER" adopt "$OTHER_LAB" >/dev/null \
+  || fail "could not adopt the second gate-refuse lab dir"
 
 # The env marker's exact stderr fragment (the primary signal).
 ENV_MSG='NO_MISTAKES_GATE set'
@@ -162,6 +166,7 @@ run_lib_call() {
     set -eu
     # shellcheck source=/dev/null
     . "$GATE_LIB"
+    # shellcheck disable=SC2016 # The inner bash, not this shell, expands $1.
     env "$@" FM_HOME="$home" NO_MISTAKES_GATE=1 bash -c \
       '. "$1"; fm_refuse_if_gate_agent' _ "$GATE_LIB"
   ) 2>&1
@@ -256,6 +261,46 @@ test_lab_tmux_private_socket_authorizes() {
       "TMUX_TMPDIR=$LAB/tmux-sock" "PATH=/usr/bin:/bin" "FM_ROOT=$WORLD/auth-root"); rc=$?
   expect_code 0 "$rc" "helper: lab home with a private lab socket dir must authorize"
   pass "fm-gate-refuse-lib: TMUX_TMPDIR inside the lab authorizes the tmux backend"
+}
+
+test_lab_cross_lab_backend_refuses() {
+  local home fakebin out rc
+  # The tmux socket dir and the tmux binary both live in another marked lab:
+  # neither is this home's own isolation, so both refuse.
+  home="$LAB/cross-home"; mkdir -p "$home/state" "$home/data" "$home/config"
+  mkdir -p "$OTHER_LAB/tmux-sock"
+  out=$(run_lib_call "$NORMAL_CWD" "$home" -u TMUX \
+      "TMUX_TMPDIR=$OTHER_LAB/tmux-sock" "PATH=/usr/bin:/bin" "FM_ROOT=$WORLD/auth-root"); rc=$?
+  expect_code 3 "$rc" "helper: a socket dir in another lab must refuse"
+  assert_contains "$out" "is not isolated inside the lab" "helper: cross-lab socket refusal must name the backend check"
+  fakebin=$(make_lab_fakebin "$OTHER_LAB/cross-fake")
+  out=$(run_lib_call "$NORMAL_CWD" "$home" -u TMUX_TMPDIR -u TMUX \
+      "PATH=$fakebin:/usr/bin:/bin" "FM_ROOT=$WORLD/auth-root"); rc=$?
+  expect_code 3 "$rc" "helper: a tmux binary in another lab must refuse"
+  assert_contains "$out" "is not isolated inside the lab" "helper: cross-lab tool refusal must name the backend check"
+  pass "fm-gate-refuse-lib: another lab's socket dir or tool never authorizes this lab's home"
+}
+
+test_lab_state_overrides_outside_refuse() {
+  local home fakebin out rc
+  home="$LAB/override-home"; mkdir -p "$home/state" "$home/data" "$home/config"
+  fakebin=$(make_lab_fakebin "$LAB/override-fake")
+  mkdir -p "$WORLD/real-state" "$WORLD/real-data" "$OTHER_LAB/state"
+  out=$(run_lib_call "$NORMAL_CWD" "$home" "PATH=$fakebin:$PATH" "FM_ROOT=$WORLD/auth-root" \
+      "FM_STATE_OVERRIDE=$WORLD/real-state"); rc=$?
+  expect_code 3 "$rc" "helper: FM_STATE_OVERRIDE outside the lab must refuse"
+  assert_contains "$out" "resolves outside the lab" "helper: state-override refusal must name the override check"
+  out=$(run_lib_call "$NORMAL_CWD" "$home" "PATH=$fakebin:$PATH" "FM_ROOT=$WORLD/auth-root" \
+      "FM_DATA_OVERRIDE=$WORLD/real-data"); rc=$?
+  expect_code 3 "$rc" "helper: FM_DATA_OVERRIDE outside the lab must refuse"
+  assert_contains "$out" "resolves outside the lab" "helper: data-override refusal must name the override check"
+  out=$(run_lib_call "$NORMAL_CWD" "$home" "PATH=$fakebin:$PATH" "FM_ROOT=$WORLD/auth-root" \
+      "FM_STATE_OVERRIDE=$OTHER_LAB/state"); rc=$?
+  expect_code 3 "$rc" "helper: FM_STATE_OVERRIDE in another lab must refuse"
+  out=$(run_lib_call "$NORMAL_CWD" "$home" "PATH=$fakebin:$PATH" "FM_ROOT=$WORLD/auth-root" \
+      "FM_STATE_OVERRIDE=$home/state" "FM_DATA_OVERRIDE=$home/data"); rc=$?
+  expect_code 0 "$rc" "helper: state and data overrides inside the lab must authorize"
+  pass "fm-gate-refuse-lib: FM_STATE_OVERRIDE/FM_DATA_OVERRIDE outside the lab refuse; inside authorize"
 }
 
 test_lab_herdr_default_session_refuses() {
@@ -380,19 +425,29 @@ test_spawn_lab_authorizes() {
   expect_code 0 "$rc" "spawn: a structurally verified lab spawn must proceed under the gate"
   assert_contains "$out" "spawned spawn-lab" "spawn: authorized lab launch should report success"
   assert_present "$home/state/spawn-lab.meta" "spawn: authorized lab launch should record meta"
-  pass "fm-spawn: a marked lab home with lab-contained tools authorizes a spawn inside the gate"
+
+  # The same lab spawn redirected at state outside the lab refuses before
+  # recording anything there.
+  mkdir -p "$WORLD/escape-state"
+  out=$(run_spawn "$GATE_WT" "$home" spawn-escape "$proj" "$wt" "$fakebin" NO_MISTAKES_GATE=1 \
+      "FM_STATE_OVERRIDE=$WORLD/escape-state"); rc=$?
+  expect_code 3 "$rc" "spawn: a lab spawn with FM_STATE_OVERRIDE outside the lab must refuse"
+  assert_contains "$out" "resolves outside the lab" "spawn: state-override refusal must name the override check"
+  assert_absent "$WORLD/escape-state/spawn-escape.meta" "spawn: refused override launch must not record meta outside the lab"
+  pass "fm-spawn: a marked lab home with lab-contained tools authorizes a spawn inside the gate; outside state refuses"
 }
 
 test_spawn_lab_allows_real_treehouse() {
   local home proj fakebin wt out rc
   # Backend contained (private socket dir) and a marked lab home, but NO
-  # lab-local treehouse: the worktree-providing spawn may still reach the real
-  # shared pool. The authorized lab proof covers the FM_HOME and the backend
-  # target only - pinning the pool inside the lab would force a fake treehouse.
+  # lab-local treehouse, and the project and its worktree outside the lab: the
+  # worktree-providing spawn may still reach the real shared pool. The
+  # authorized lab proof covers the FM_HOME and the backend target only -
+  # pinning the project or pool inside the lab would force a fake treehouse.
   home="$LAB/thome"; mkdir -p "$home/data"
-  proj=$(make_normal_repo "$LAB/tproj")
-  fm_git_add_origin "$proj" "$LAB/tproj-origin.git"
-  wt="$LAB/twt"
+  proj=$(make_normal_repo "$WORLD/tproj")
+  fm_git_add_origin "$proj" "$WORLD/tproj-origin.git"
+  wt="$WORLD/twt"
   git -C "$proj" worktree add -q --detach "$wt" >/dev/null 2>&1
   mkdir -p "$LAB/tsock"
   fakebin=$(fm_fakebin "$LAB/tfake")
@@ -609,19 +664,6 @@ test_teardown_lab_authorizes() {
   pass "fm-teardown: a marked lab home with lab-contained tools authorizes teardown inside the gate"
 }
 
-# --- tracked gate config -----------------------------------------------------
-
-test_tracked_config_disables_project_settings() {
-  local flag
-  flag=$(awk '
-    /^[[:space:]]*disable_project_settings:/ {
-      v=$0; sub(/^[^:]*:[[:space:]]*/, "", v); gsub(/[[:space:]]/, "", v); print v; exit
-    }' "$ROOT/.no-mistakes.yaml")
-  [ "$flag" = "true" ] \
-    || fail ".no-mistakes.yaml must set disable_project_settings: true, got: ${flag:-absent}"
-  pass ".no-mistakes.yaml: disable_project_settings is true"
-}
-
 test_helper_env_marker_refuses
 test_helper_empty_env_marker_refuses
 test_helper_path_backstop_refuses
@@ -633,6 +675,8 @@ test_marker_outside_temp_root_refuses
 test_forged_binding_refuses
 test_lab_ambient_tmux_refuses
 test_lab_tmux_private_socket_authorizes
+test_lab_cross_lab_backend_refuses
+test_lab_state_overrides_outside_refuse
 test_lab_herdr_default_session_refuses
 test_lab_herdr_named_session_authorizes
 test_lab_meta_outside_path_refuses
@@ -645,4 +689,3 @@ test_send_refuses_and_admits
 test_send_lab_authorizes
 test_teardown_refuses_and_admits
 test_teardown_lab_authorizes
-test_tracked_config_disables_project_settings

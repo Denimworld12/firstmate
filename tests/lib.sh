@@ -41,8 +41,8 @@ umask 022
 # Let firstmate's own test suite drive the REAL fm-spawn/fm-send/fm-teardown
 # under the gate-lifecycle refusal (bin/fm-gate-refuse-lib.sh). The no-mistakes
 # gate runs this suite FROM a gate worktree - the exact environment that guard
-# refuses - so fixture roots created through fm_test_tmproot below are marked
-# as disposable lab homes with bin/fm-lab-home.sh: the structural lab
+# refuses - so fixture roots created through fm_test_tmproot below live inside
+# the suite's disposable lab dir, marked with bin/fm-lab-home.sh: the structural lab
 # authorization then proves on disk what the retired FM_GATE_REFUSE_BYPASS env
 # flag asserted on the honor system (temp-rooted, helper-marked,
 # backend-isolated). Suites that build fixture homes outside fm_test_tmproot
@@ -122,21 +122,26 @@ FM_TEST_OWNER_IDENTITY=$(fm_test_pid_identity "$$") || {
   return 1
 }
 
-# A private tmux socket dir for the whole suite, marked as a lab dir so a case
-# driving real tmux under the gate lands on a lab server rather than the
-# default one (bin/fm-gate-refuse-lib.sh's tmux containment). Created at
-# source time because fm_test_tmproot runs inside command substitution, where
-# an export could never reach the suite shell.
-FM_TEST_TMUX_SOCKDIR=$(mktemp -d "${TMPDIR:-/tmp}/fm-test-tmux-sock.XXXXXX") || {
+# The suite's own disposable lab dir: every fm_test_tmproot fixture root is
+# created inside it, and it is also the suite's private tmux socket dir, so a
+# case driving real tmux under the gate lands on this lab's own server rather
+# than the default one (bin/fm-gate-refuse-lib.sh binds backend containment
+# to the authorized home's lab). Created at source time because
+# fm_test_tmproot runs inside command substitution, where an export could
+# never reach the suite shell. It carries the same owner marker as a fixture
+# root, so fm_test_reap_orphans reclaims it after a hard kill.
+FM_TEST_LAB_DIR=$(mktemp -d "${TMPDIR:-/tmp}/fm-test-lab.XXXXXX") || {
   rm -f "$FM_TEST_CLEANUP_REGISTRY"
   return 1
 }
-printf '%s\n' "$FM_TEST_TMUX_SOCKDIR" >> "$FM_TEST_CLEANUP_REGISTRY"
-fm_test_lab_adopt "$FM_TEST_TMUX_SOCKDIR" || {
-  rm -rf "$FM_TEST_TMUX_SOCKDIR" "$FM_TEST_CLEANUP_REGISTRY"
+if ! FM_TEST_LAB_DIR=$(cd -P -- "$FM_TEST_LAB_DIR" && pwd -P) ||
+  ! printf '%s\n%s\n' "$$" "$FM_TEST_OWNER_IDENTITY" > "$FM_TEST_LAB_DIR/.fm-test-fixture" ||
+  ! printf '%s\n' "$FM_TEST_LAB_DIR" >> "$FM_TEST_CLEANUP_REGISTRY" ||
+  ! fm_test_lab_adopt "$FM_TEST_LAB_DIR"; then
+  rm -rf "$FM_TEST_LAB_DIR" "$FM_TEST_CLEANUP_REGISTRY"
   return 1
-}
-export TMUX_TMPDIR="$FM_TEST_TMUX_SOCKDIR"
+fi
+export TMUX_TMPDIR="$FM_TEST_LAB_DIR"
 
 # A suite launched from inside a Herdr/cmux/tmux pane inherits that pane's
 # backend identity (HERDR_ENV, HERDR_SESSION, CMUX_WORKSPACE_ID, TMUX), which
@@ -212,14 +217,11 @@ fm_test_cleanup() {
 }
 
 fm_test_tmproot() {
-  local prefix=${1:-fm-test} root tmp_base
-  tmp_base=${TMPDIR:-/tmp}
-  tmp_base=${tmp_base%/}
-  root=$(mktemp -d "$tmp_base/${prefix}.XXXXXX") || return 1
+  local prefix=${1:-fm-test} root
+  root=$(mktemp -d "$FM_TEST_LAB_DIR/${prefix}.XXXXXX") || return 1
   root=$(cd -P -- "$root" && pwd -P) || return 1
   if ! printf '%s\n%s\n' "$$" "$FM_TEST_OWNER_IDENTITY" > "$root/.fm-test-fixture" ||
-    ! printf '%s\n' "$root" >> "$FM_TEST_CLEANUP_REGISTRY" ||
-    ! fm_test_lab_adopt "$root"; then
+    ! printf '%s\n' "$root" >> "$FM_TEST_CLEANUP_REGISTRY"; then
     rm -rf "$root"
     return 1
   fi
@@ -299,11 +301,11 @@ fi
 # actually ran. Setting one to 0 (or FM_LIVE=0) turns it off; a guard's own
 # variable wins over FM_LIVE.
 #
-# Sourcing this library adopts every fm_test_tmproot fixture root as a
-# structural lab home and points TMUX_TMPDIR at an adopted private socket
-# dir, which is what lets a live guard drive the real fm-spawn/fm-send/
-# fm-teardown from inside a no-mistakes gate worktree instead of being
-# refused by bin/fm-gate-refuse-lib.sh.
+# Sourcing this library creates every fm_test_tmproot fixture root inside the
+# suite's adopted lab dir and points TMUX_TMPDIR at that same lab, which is
+# what lets a live guard drive the real fm-spawn/fm-send/fm-teardown from
+# inside a no-mistakes gate worktree instead of being refused by
+# bin/fm-gate-refuse-lib.sh.
 
 fm_live_gate() {
   local policy=$1 vars=$2

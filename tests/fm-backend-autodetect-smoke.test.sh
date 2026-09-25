@@ -64,13 +64,6 @@ herdr_forget_inherited_pane
 # tests/fm-backend.test.sh:test_spawn_symlinked_project_prefix_avoids_false_refusal.
 TMP_ROOT=$(mktemp -d "$(cd "${TMPDIR:-/tmp}" && pwd -P)/fm-backend-autodetect-smoke.XXXXXX")
 fm_test_lab_adopt "$TMP_ROOT"
-# The spawn below is a real fm-spawn.sh worktree-providing launch, so the
-# pane's `treehouse get` must resolve to a lab-contained fake that yields a
-# git worktree inside TMP_ROOT - the gate lab authorization refuses the real
-# pool allocator.
-fm_test_fake_treehouse "$TMP_ROOT/fakebin" "$TMP_ROOT/treehouse-pool" \
-  || fail "could not install the lab-contained treehouse fake"
-export PATH="$TMP_ROOT/fakebin:$PATH"
 HERDR_LAB_HELPER="$ROOT/bin/fm-herdr-lab.sh"
 HERDR_LAB_SESSION=$("$HERDR_LAB_HELPER" name fm-autodetect-smoke-concurrency-h3) || {
   rm -rf "$TMP_ROOT"

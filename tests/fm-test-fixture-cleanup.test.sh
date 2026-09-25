@@ -80,18 +80,17 @@ test_cleanup_registry_resists_precreation() {
 }
 
 test_fixture_registration_failure_rolls_back_root() {
-  local harness failure_tmp registry_dir output leaked_root
+  local harness registry_dir output leaked_root
   harness=$(fm_test_tmproot fm-test-cleanup-registration-harness)
-  failure_tmp="$harness/tmp"
   registry_dir="$harness/registry-dir"
-  mkdir -p "$failure_tmp" "$registry_dir"
+  mkdir -p "$registry_dir"
 
-  if output=$(TMPDIR="$failure_tmp" FM_TEST_CLEANUP_REGISTRY="$registry_dir" \
+  if output=$(FM_TEST_CLEANUP_REGISTRY="$registry_dir" \
     fm_test_tmproot fm-test-cleanup-registration-failure 2>/dev/null); then
     fail "fm_test_tmproot succeeded after its cleanup registry rejected registration"
   fi
   [ -z "$output" ] || fail "fm_test_tmproot published an unregistered fixture root"
-  for leaked_root in "$failure_tmp"/fm-test-cleanup-registration-failure.*; do
+  for leaked_root in "$FM_TEST_LAB_DIR"/fm-test-cleanup-registration-failure.*; do
     [ ! -e "$leaked_root" ] || fail "fm_test_tmproot leaked a root after registration failed"
   done
   pass "failed fixture registration rolls back the new root"
@@ -117,7 +116,7 @@ test_orphan_sweep_respects_fixture_ownership() {
   done
   [ -s "$dirfile" ] || fail "the active child never published its fixture root before the wait timed out"
   active_dir=$(cat "$dirfile")
-  touch -t 202001010000 "$active_dir/.fm-test-fixture"
+  touch -t 202001010000 "$(dirname "$active_dir")/.fm-test-fixture"
 
   stale_dir=$(mktemp -d "${TMPDIR:-/tmp}/fm-test-cleanup-stale.XXXXXX")
   printf '%s\n%s\n' "$$" reused-process-identity > "$stale_dir/.fm-test-fixture"
