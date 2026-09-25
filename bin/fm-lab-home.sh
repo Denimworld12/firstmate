@@ -25,9 +25,9 @@
 #
 # A lab dir is itself a usable disposable FM_HOME (state/, data/, config/,
 # projects/ are created). For multi-home scenarios create additional homes
-# inside the same lab dir - every FM_HOME, FM_STATE_OVERRIDE, and
-# FM_DATA_OVERRIDE a lifecycle call uses must resolve inside the one marked
-# lab dir, and the backend target must be the lab's own isolated session
+# inside the same lab dir - every FM_HOME and effective state and data dir a
+# lifecycle call uses must resolve inside the one marked lab dir, symlinks
+# followed, and the backend target must be the lab's own isolated session
 # (Herdr fm-lab-*) or private tmux socket (TMUX_TMPDIR inside this lab). A
 # lab-launched primary also needs the gate marker scrubbed from its
 # environment (env -u NO_MISTAKES_GATE) - it is a test fixture firstmate, not
@@ -64,14 +64,28 @@ fm_lab_home_tmp_root() {
 }
 
 fm_lab_home_canon() { # <dir> - canonical path, or nothing when unresolvable
-  CDPATH='' cd -- "$1" 2>/dev/null && pwd -P
+  CDPATH='' cd -P -- "$1" 2>/dev/null && pwd -P
 }
 
 fm_lab_home_canon_loose() { # <path> - canon of an existing dir, or
-  # parent-canon + basename for a not-yet-existing path (mirrors
-  # secondmate_registry_path_key).
-  local path=$1 parent base
+  # parent-canon + basename for any other path (mirrors
+  # secondmate_registry_path_key). A symlink, dangling or not, is followed to
+  # its final target first, so a lab-local link never stands in for an
+  # outside file.
+  local path=$1 parent base target hops=0
   case "$path" in /*) ;; *) return 1 ;; esac
+  while [ -L "$path" ]; do
+    hops=$((hops + 1))
+    [ "$hops" -le 40 ] || return 1
+    target=$(readlink -- "$path") || return 1
+    case "$target" in
+      /*) path=$target ;;
+      *)
+        parent=$(fm_lab_home_canon "$(dirname -- "$path")") || return 1
+        path="$parent/$target"
+        ;;
+    esac
+  done
   if [ -d "$path" ]; then
     fm_lab_home_canon "$path"
   else

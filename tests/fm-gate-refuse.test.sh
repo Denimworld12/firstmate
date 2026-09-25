@@ -303,6 +303,51 @@ test_lab_state_overrides_outside_refuse() {
   pass "fm-gate-refuse-lib: FM_STATE_OVERRIDE/FM_DATA_OVERRIDE outside the lab refuse; inside authorize"
 }
 
+test_lab_symlinked_backend_escape_refuses() {
+  local home linkbin out rc
+  # A lab-local symlink is only as contained as its final target: a link in
+  # the lab's PATH to an outside tmux, or a lab socket-dir link to an outside
+  # (even not-yet-created) dir, must refuse; a link resolving inside the lab
+  # still authorizes.
+  home="$LAB/link-home"; mkdir -p "$home/state" "$home/data" "$home/config"
+  mkdir -p "$WORLD/real-bin" "$LAB/link-fake" "$LAB/link-in-fake"
+  printf '#!/usr/bin/env bash\nexit 0\n' > "$WORLD/real-bin/tmux"
+  chmod +x "$WORLD/real-bin/tmux"
+  linkbin="$LAB/link-fake"
+  ln -s "$WORLD/real-bin/tmux" "$linkbin/tmux"
+  out=$(run_lib_call "$NORMAL_CWD" "$home" -u TMUX_TMPDIR -u TMUX \
+      "PATH=$linkbin:/usr/bin:/bin" "FM_ROOT=$WORLD/auth-root"); rc=$?
+  expect_code 3 "$rc" "helper: a lab symlink to an outside tmux must refuse"
+  assert_contains "$out" "is not isolated inside the lab" "helper: symlinked-tool refusal must name the backend check"
+  ln -s "$WORLD/real-sock-missing" "$LAB/sock-link"
+  out=$(run_lib_call "$NORMAL_CWD" "$home" -u TMUX \
+      "TMUX_TMPDIR=$LAB/sock-link" "PATH=/usr/bin:/bin" "FM_ROOT=$WORLD/auth-root"); rc=$?
+  expect_code 3 "$rc" "helper: a lab socket-dir symlink to an outside dir must refuse"
+  make_lab_fakebin "$LAB/link-in-target" >/dev/null
+  ln -s "../link-in-target/fakebin/tmux" "$LAB/link-in-fake/tmux"
+  out=$(run_lib_call "$NORMAL_CWD" "$home" -u TMUX_TMPDIR -u TMUX \
+      "PATH=$LAB/link-in-fake:/usr/bin:/bin" "FM_ROOT=$WORLD/auth-root"); rc=$?
+  expect_code 0 "$rc" "helper: a lab symlink resolving inside the lab must authorize"
+  pass "fm-gate-refuse-lib: lab-local symlinks authorize only when their target stays inside the lab"
+}
+
+test_lab_default_state_data_symlink_refuses() {
+  local home fakebin out rc which
+  fakebin=$(make_lab_fakebin "$LAB/dirlink-fake")
+  for which in state data; do
+    home="$LAB/dirlink-$which-home"; mkdir -p "$home/state" "$home/data" "$home/config"
+    mkdir -p "$WORLD/real-home-$which"
+    rm -rf "${home:?}/$which"
+    ln -s "$WORLD/real-home-$which" "$home/$which"
+    out=$(run_lib_call "$NORMAL_CWD" "$home" -u FM_STATE_OVERRIDE -u FM_DATA_OVERRIDE \
+        "PATH=$fakebin:$PATH" "FM_ROOT=$WORLD/auth-root"); rc=$?
+    expect_code 3 "$rc" "helper: a lab home whose default $which dir links outside the lab must refuse"
+    assert_contains "$out" "the state or data directory resolves outside the lab" \
+      "helper: default $which-dir refusal must name the state/data check"
+  done
+  pass "fm-gate-refuse-lib: a lab home whose default state or data dir links outside the lab refuses"
+}
+
 test_lab_herdr_default_session_refuses() {
   local home out rc
   home="$LAB/herdr-home"; mkdir -p "$home/state" "$home/data" "$home/config"
@@ -564,7 +609,20 @@ test_send_lab_authorizes() {
   expect_code 0 "$rc" "send: a structurally verified lab steer must proceed under the gate"
   assert_contains "$(cat "$log")" "target=sess:fm-lane-ok" \
     "send: authorized lab steer should reach the lab endpoint"
-  pass "fm-send: a marked lab home with a lab-contained tmux authorizes a steer inside the gate"
+
+  # The same lab home with its default state dir symlinked at an outside
+  # home's state: the steer refuses and enqueues nothing there.
+  home="$LAB/send-link-home"; mkdir -p "$home" "$WORLD/send-real-state"
+  ln -s "$WORLD/send-real-state" "$home/state"
+  fm_write_meta "$WORLD/send-real-state/lane-ok.meta" "window=sess:fm-lane-ok" "kind=ship" "harness=codex"
+  : > "$log"
+  out=$(run_send "$GATE_WT" "$home" "$fakebin" "$log" fm-lane-ok "hello captain" NO_MISTAKES_GATE=1); rc=$?
+  expect_code 3 "$rc" "send: a lab home whose state links outside the lab must refuse"
+  assert_contains "$out" "the state or data directory resolves outside the lab" \
+    "send: symlinked-state refusal must name the state/data check"
+  [ ! -s "$log" ] || fail "send: refused symlinked-state steer still typed to the endpoint"$'\n'"$(cat "$log")"
+  assert_absent "$WORLD/send-real-state/lane-ok.inbox" "send: refused symlinked-state steer must not enqueue outside the lab"
+  pass "fm-send: a marked lab home with a lab-contained tmux authorizes a steer inside the gate; outside state refuses"
 }
 
 # --- fm-teardown ------------------------------------------------------------
@@ -677,6 +735,8 @@ test_lab_ambient_tmux_refuses
 test_lab_tmux_private_socket_authorizes
 test_lab_cross_lab_backend_refuses
 test_lab_state_overrides_outside_refuse
+test_lab_symlinked_backend_escape_refuses
+test_lab_default_state_data_symlink_refuses
 test_lab_herdr_default_session_refuses
 test_lab_herdr_named_session_authorizes
 test_lab_meta_outside_path_refuses

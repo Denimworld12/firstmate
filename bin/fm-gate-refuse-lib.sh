@@ -51,9 +51,10 @@
 #      the temp root ${TMPDIR:-/tmp}. A copied or forged marker fails: the
 #      binding names the dir the token was minted for.
 #   2. The home is NOT the primary checkout (canonical FM_HOME != FM_ROOT).
-#      FM_STATE_OVERRIDE and FM_DATA_OVERRIDE, when set, must resolve inside
-#      the lab dir too - they redirect the task records and data the call
-#      writes, so an override outside the lab would reach real fleet state.
+#      The effective state and data dirs (FM_STATE_OVERRIDE/FM_DATA_OVERRIDE,
+#      else $FM_HOME/state and $FM_HOME/data) must resolve inside the lab dir
+#      too, symlinks followed - they hold the task records and data the call
+#      writes, so a dir outside the lab would reach real fleet state.
 #   3. The home's own secondmate registry (data/secondmates.md) binds only
 #      lab-contained local homes; a remote record additionally requires the
 #      ssh transport to resolve inside the lab (FM_SSH_BIN or `ssh` under the
@@ -153,10 +154,11 @@ fm_gate_lab_fail() { # <reason>
   return 1
 }
 
-# Canon-resolve a path (existing dir, or parent-canon + basename) and require
-# it to live inside the authorized lab dir. Used for the home's own records
-# and state overrides, and for backend containment: a private socket dir or
-# fixture tool must belong to this lab, not merely to some marked lab.
+# Canon-resolve a path (symlinks followed; existing dir, or parent-canon +
+# basename) and require it to live inside the authorized lab dir. Used for
+# the home's own records and state/data dirs, and for backend containment: a
+# private socket dir or fixture tool must belong to this lab, not merely to
+# some marked lab, and a lab-local symlink to an outside tool is not lab-local.
 fm_gate_lab_path_inside() { # <path>
   local c
   c=$(fm_lab_home_canon_loose "$1" 2>/dev/null) || return 1
@@ -414,9 +416,9 @@ fm_gate_lab_authorize() { # <home> [--backend hint] [skip-env-backend]
     fm_gate_lab_fail "lab home must not be the primary checkout"
     return 1
   fi
-  if { [ -n "${FM_STATE_OVERRIDE:-}" ] && ! fm_gate_lab_path_inside "$FM_STATE_OVERRIDE"; } \
-      || { [ -n "${FM_DATA_OVERRIDE:-}" ] && ! fm_gate_lab_path_inside "$FM_DATA_OVERRIDE"; }; then
-    fm_gate_lab_fail "FM_STATE_OVERRIDE or FM_DATA_OVERRIDE resolves outside the lab"
+  if ! fm_gate_lab_path_inside "${FM_STATE_OVERRIDE:-$home/state}" \
+      || ! fm_gate_lab_path_inside "${FM_DATA_OVERRIDE:-$home/data}"; then
+    fm_gate_lab_fail "the state or data directory resolves outside the lab"
     return 1
   fi
   fm_gate_lab_registry_ok "$home" || {

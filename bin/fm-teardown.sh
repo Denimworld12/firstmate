@@ -332,6 +332,11 @@ while [ "$#" -gt 0 ]; do
   esac
   shift
 done
+# Fail closed before any fleet mutation: a no-mistakes gate agent must never tear
+# down a worktree (see bin/fm-gate-refuse-lib.sh). The backend comes from
+# recorded task metadata, not the environment, so the env-backend check is
+# skipped.
+fm_refuse_if_gate_agent . '' 1
 fm_backlog_directory_present "$STATE" "state directory" || {
   echo "error: teardown refused: $FM_BACKLOG_TRANSITION_ERROR" >&2
   exit 1
@@ -436,11 +441,6 @@ fm_lock_try_acquire "$CONTROL_LOCK" || {
   exit 1
 }
 CONTROL_LOCK_HELD=1
-# Fail closed before any fleet mutation: a no-mistakes gate agent must never tear
-# down a worktree (see bin/fm-gate-refuse-lib.sh). The backend comes from
-# recorded task metadata, not the environment, so the env-backend check is
-# skipped.
-fm_refuse_if_gate_agent . '' 1
 FM_LOCK_LOG_PREFIX=teardown
 
 fm_backlog_record_present "$META" "task record" "$STATE" || {
