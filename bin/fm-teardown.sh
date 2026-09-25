@@ -332,8 +332,8 @@ while [ "$#" -gt 0 ]; do
   esac
   shift
 done
-# Fail closed before any fleet mutation: a no-mistakes gate agent must never tear
-# down a worktree (see bin/fm-gate-refuse-lib.sh). The backend comes from
+# Refuse gate-context teardown outside a verified lab (see
+# bin/fm-gate-refuse-lib.sh). The backend comes from
 # recorded task metadata, not the environment, so the env-backend check is
 # skipped.
 fm_refuse_if_gate_agent . '' 1

@@ -145,10 +145,9 @@ esac
 
 # shellcheck source=bin/fm-gate-refuse-lib.sh
 . "$SCRIPT_DIR/fm-gate-refuse-lib.sh"
-# Fail closed before any fleet mutation: a no-mistakes gate agent must never
-# drive a crewmate's lifecycle (see bin/fm-gate-refuse-lib.sh). The backend
-# comes from recorded task metadata, not the environment, so the env-backend
-# check is skipped.
+# Refuse gate-context lifecycle calls unless the target is a verified lab
+# (see bin/fm-gate-refuse-lib.sh). The backend comes from recorded task
+# metadata, not the environment, so the env-backend check is skipped.
 fm_refuse_if_gate_agent . '' 1
 
 if [ -z "${FM_HOME+x}" ] || [ -z "${FM_HOME:-}" ]; then

@@ -596,8 +596,8 @@ fm_backlog_directory_present "$STATE" "state directory" || {
 . "$SCRIPT_DIR/fm-timeout-lib.sh"
 # shellcheck source=bin/fm-worker-account-lib.sh
 . "$SCRIPT_DIR/fm-worker-account-lib.sh"
-# Fail closed before any fleet mutation: a no-mistakes gate agent must never spawn
-# a direct report (see bin/fm-gate-refuse-lib.sh). Lab authorization must judge the
+# Refuse gate-context spawns outside a verified lab (see
+# bin/fm-gate-refuse-lib.sh). Lab authorization must judge the
 # backend this launch will actually use, so pre-scan the arguments for --backend -
 # the real parse happens below and an unknown token simply yields no hint.
 _spawn_backend_hint='' _spawn_from_meta='' _spawn_prev_arg=''

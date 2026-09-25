@@ -39,22 +39,8 @@
 # environment (env -u NO_MISTAKES_GATE) - it is a test fixture firstmate, not
 # a gate agent.
 #
-# Per-harness "primary in a lab" recipe: create the lab dir, write the opt-in
-# flag the scenario needs (e.g. `touch $LAB/config/supervision-host`), then
-# start the harness's own CLI, with the machine's existing login, as the
-# session command on the lab's private socket:
-#   mkdir -p "$LAB/tmux"
-#   env -u NO_MISTAKES_GATE TMUX_TMPDIR="$LAB/tmux" tmux -L fm-lab \
-#     new-session -d -s primary -c "$PWD" -e FM_HOME="$LAB" <cli>
-# where <cli> is claude -> `claude`, codex -> `codex`, cursor ->
-# `cursor-agent`, opencode -> `opencode`, grok -> `grok`, omp -> `omp`.
-# Drive and stop it only through that socket
-# (`TMUX_TMPDIR="$LAB/tmux" tmux -L fm-lab send-keys|capture-pane|kill-server`);
-# the primary's own firstmate calls inherit $TMUX naming the same socket. A
-# Herdr primary uses a named fm-lab-* session via bin/fm-herdr-lab.sh
-# instead, recorded right after provisioning with
-# `bin/fm-lab-home.sh record-herdr-session "$LAB" <session>`. An absent
-# CLI or an unavailable login is reported untested, never faked.
+# The tracked .no-mistakes.yaml test instructions own the per-harness
+# primary-in-a-lab recipe; this header owns only the helper's lab mechanics.
 
 fm_lab_home_error() { echo "fm-lab-home: $*" >&2; }
 

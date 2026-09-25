@@ -50,7 +50,7 @@
 #      canonical dir in the helper's state, and which canonically lives under
 #      the temp root ${TMPDIR:-/tmp}. A copied or forged marker fails: the
 #      binding names the dir the token was minted for.
-#   2. The home is NOT the primary checkout (canonical FM_HOME != FM_ROOT).
+#   2. Neither the home nor its lab root is the primary git checkout.
 #      The effective state and data dirs (FM_STATE_OVERRIDE/FM_DATA_OVERRIDE,
 #      else $FM_HOME/state and $FM_HOME/data) must resolve inside the lab dir
 #      too, symlinks followed - they hold the task records and data the call
@@ -67,9 +67,9 @@
 #      marked lab:
 #      - herdr: HERDR_SESSION names an fm-lab-* session recorded in THIS
 #        lab's binding record (bin/fm-lab-home.sh record-herdr-session), or
-#        `herdr` resolves inside the lab (a fake). The default session and
-#        another lab's session are never authorized; a missing or unreadable
-#        record refuses.
+#        `herdr` resolves inside the lab (a fixture tool). A real default
+#        session or another lab's session is never authorized; without a
+#        lab-local tool, a missing or unreadable record refuses.
 #      - tmux: TMUX_TMPDIR resolves inside the lab (private socket dir), or
 #        `tmux` resolves inside the lab. An ambient $TMUX naming a live socket
 #        outside the lab refuses, since pane targeting would hit a real
