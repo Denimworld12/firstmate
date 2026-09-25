@@ -102,7 +102,7 @@ Anything main must act on while attended to move the work forward, such as a loc
 
 The host copies the Pi branch's broken-session policy ([pi-supervision-branch.md](pi-supervision-branch.md#components-and-their-owners)), with an engine error in place of a provider error: a turn that exited nonzero, hit its bound, or ended without a complete successful result.
 Two consecutive engine errors latch the session: every wake reaches main for a five-minute cooldown, the attended close unchanged and the away close with a `supervision-host:` line, after which one wake probes the engine, and each probe that ends in another engine error doubles the cooldown up to one hour.
-A turn that records a report without an engine error clears the latch; a turn that records no report neither counts toward it nor clears it.
+A turn that records a report without an engine error clears the latch; a turn with a complete engine result but no report neither counts toward it nor clears it, while an engine error counts even if no report was recorded.
 The first trip adds one `supervision-host:` line to the failing turn's handback, and an attended recovery exits with one line saying so, while an away recovery is only logged.
 The latch belongs to one main session, engine, and model, so a new main session or another engine or model starts clean.
 
