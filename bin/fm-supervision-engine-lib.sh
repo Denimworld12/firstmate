@@ -108,13 +108,12 @@ EOF
 # and a checksum of its session sidecar. The host keys its engine conversation
 # to it, and the dialog mirror (bin/fm-host-mirror.sh) keys each entry to it.
 # fm_supervision_host_attended_ready <config-dir> <primary-harness>
-# 0 when the attended host may take any close on this home: it opted in with a
-# usable engine whose executable is found, node runs the dispatch owner and
-# reads the engine's result, jq reads and writes the dialog mirror, perl,
-# timeout, or gtimeout bounds the engine turn (bin/fm-timeout-lib.sh), and the
-# primary has a verified dialog mirror (bin/fm-host-mirror.sh). Otherwise 1, with
-# FM_SUPERVISION_HOST_UNREADY naming why. The host's attended acceptor and
-# quiet mode (bin/fm-afk-launch.sh) share it.
+# 0 when the attended host's configured engine, executable, node, jq, turn
+# bound (perl, timeout, or gtimeout), and primary's mirror writer are ready;
+# otherwise 1, with FM_SUPERVISION_HOST_UNREADY naming why. The host's
+# attended acceptor and quiet mode (bin/fm-afk-launch.sh) share this check;
+# the host feed checks mirror contents, while quiet-check also requires the
+# mirror file to be present and readable.
 fm_supervision_host_attended_ready() {
   FM_SUPERVISION_HOST_UNREADY=
   if ! fm_supervision_host_config "$1" "$2" || [ -z "$FM_SUPERVISION_ENGINE" ]; then
