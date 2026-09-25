@@ -1,0 +1,5 @@
+error: no-mistakes gate agent must not drive the fleet (NO_MISTAKES_GATE set)
+gate refusal exit=3
+error: refusing fleet lifecycle from inside a no-mistakes gate worktree (/Users/kunchen/.no-mistakes/repos/52b07e9083e7.git)
+path refusal exit=3
+lab state files: 

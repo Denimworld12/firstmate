@@ -1,0 +1,3 @@
+launch status=1
+error connecting to /Users/kunchen/.no-mistakes/worktrees/52b07e9083e7/01M3BFNEVG5TT7HWR28A4KP49R/.fm-lab.npDq9h/tmux/tmux-501/fm-lab (File name too long)
+capture status=1
