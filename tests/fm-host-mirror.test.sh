@@ -303,6 +303,43 @@ main|Holding it." "$(entries "$home")" \
   pass "mirror: a Codex message the mirror refused is recorded by the next hook instead of being read past"
 }
 
+# Codex appends its rollout while the hooks read it: a record still being
+# written is read once it is complete, and a line that can never parse does not
+# hold back the messages after it.
+test_codex_record_still_being_written_is_read_once_complete() {
+  local home rollout record
+  home=$(make_home codex-partial)
+  rollout="$home/rollout.jsonl"
+  item() {  # <role> <text>
+    jq -cn --arg role "$1" --arg text "$2" \
+      '{type: "response_item", payload: {type: "message", role: $role, content: [{type: (if $role == "assistant" then "output_text" else "input_text" end), text: $text}]}}'
+  }
+  post() {
+    ROLLOUT=$rollout as_session "$home" '
+      printf "%s" "{\"hook_event_name\":\"PostToolUse\",\"transcript_path\":\"$ROLLOUT\"}" \
+        | FM_ROOT_OVERRIDE="$PRIMARY_ROOT" "$MIRROR" hook codex
+    ' || fail "a Codex mirror hook failed"
+  }
+  item user 'Dispatch the export worker.' > "$rollout"
+  record=$(item user 'Hold the merge until I say so.')
+  printf '%s' "${record:0:40}" >> "$rollout"
+  post
+  printf '%s\n' "${record:40}" >> "$rollout"
+  post
+  assert_equals "captain|Dispatch the export worker.
+captain|Hold the merge until I say so." "$(entries "$home")" \
+    "a record completed after one hook read it partly written must be mirrored once complete"
+  printf '%s\n' "${record:0:40}" >> "$rollout"
+  post
+  item assistant 'Holding it.' >> "$rollout"
+  post
+  assert_equals "captain|Dispatch the export worker.
+captain|Hold the merge until I say so.
+main|Holding it." "$(entries "$home")" \
+    "a line that can never parse must not hold back the messages after it"
+  pass "mirror: a Codex record still being written is read once complete, and a corrupt line does not stall the mirror"
+}
+
 test_feed_resumes_reanchors_and_is_bounded() {
   local home out
   home=$(make_home feed)
@@ -380,6 +417,7 @@ test_operational_foreign_and_unowned_input_is_dropped
 test_entries_are_deduplicated_and_capped
 test_mirror_is_owner_only_under_an_open_umask
 test_codex_message_refused_by_the_mirror_is_retried
+test_codex_record_still_being_written_is_read_once_complete
 test_feed_resumes_reanchors_and_is_bounded
 test_recreated_mirror_continues_past_both_cursors
 test_verified_writers

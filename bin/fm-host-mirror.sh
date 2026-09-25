@@ -203,9 +203,11 @@ append_entry() {  # <captain|main> <text> [<id>]
 
 # Mirror the user and assistant messages a Codex rollout transcript gained
 # since the last read, each keyed to its transcript line so a re-read records
-# nothing twice. The read position stops at the first message that could not
-# be recorded, so the next hook retries it. Returns 1 when the payload names no
-# readable transcript.
+# nothing twice. Only newline-terminated lines are read, and the read position
+# stops before a last line that does not parse yet and at the first message
+# that could not be recorded, so the next hook retries either; an unparsable
+# line with complete lines after it can never complete and is passed. Returns 1
+# when the payload names no readable transcript.
 codex_transcript() {  # <payload>
   local path record from=1 total entry tag id text failed
   path=$(printf '%s' "$1" | jq -r '.transcript_path // empty' 2>/dev/null)
@@ -220,15 +222,18 @@ codex_transcript() {  # <payload>
   [ "$from" -le "$((total + 1))" ] || from=1
   [ "$from" -le "$total" ] || return 0
   failed=$(sed -n "${from},${total}p" "$path" | awk -v first="$from" '{ print (first + NR - 1) "\t" $0 }' \
-    | jq -Rc --arg file "$(basename "$path")" '
-        (split("\t") | {n: .[0], item: (.[1:] | join("\t") | fromjson?)})
-        | select(.item.type == "response_item" and .item.payload.type == "message"
-            and (.item.payload.role == "user" or .item.payload.role == "assistant"))
-        | {n: .n, tag: (if .item.payload.role == "user" then "captain" else "main" end),
-           id: "\($file):\(.n)",
-           text: ([.item.payload.content[]? | (.text // "")] | join("\n"))}' 2>/dev/null \
+    | jq -Rc --arg file "$(basename "$path")" --arg last "$total" '
+        (split("\t") | {n: .[0], item: (.[1:] | join("\t") | try fromjson catch null)})
+        | if .item == null then select(.n == $last) | {n: .n}
+          else select(.item.type == "response_item" and .item.payload.type == "message"
+              and (.item.payload.role == "user" or .item.payload.role == "assistant"))
+            | {n: .n, tag: (if .item.payload.role == "user" then "captain" else "main" end),
+               id: "\($file):\(.n)",
+               text: ([.item.payload.content[]? | (.text // "")] | join("\n"))}
+          end' 2>/dev/null \
     | while IFS= read -r entry; do
-        tag=$(printf '%s' "$entry" | jq -r .tag)
+        tag=$(printf '%s' "$entry" | jq -r '.tag // empty')
+        [ -n "$tag" ] || { printf '%s\n' "$entry" | jq -r .n; break; }
         id=$(printf '%s' "$entry" | jq -r .id)
         text=$(printf '%s' "$entry" | jq -r .text)
         append_entry "$tag" "$text" "$id" || { printf '%s\n' "$entry" | jq -r .n; break; }
