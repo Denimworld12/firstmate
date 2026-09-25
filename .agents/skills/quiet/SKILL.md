@@ -80,5 +80,4 @@ Per the issue's own author triage: quiet mode is presentation only.
 Progress, retries, and internal mechanics stay below deck exactly as in away
 mode, but review-ready work, findings, decisions, failures, and credentials
 escalate every time, through the same classification policy `/afk` owns.
-Quiet mode is opt-in and never the unconsented default; only an explicit
-`/quiet` invocation enters it.
+Daemon-backed quiet mode remains opt-in: only an explicit `/quiet` invocation enters that lifecycle.
