@@ -234,8 +234,9 @@ fm_afk_launch_host_primary() {  # <harness>
 }
 
 # True when quiet mode needs nothing on this home (the header's QUIET MODE):
-# where the attended supervision host runs and its dialog mirror can be read,
-# unless a quiet daemon from an earlier entry already runs here.
+# where the attended supervision host runs, the main session it keys to can be
+# identified, and its dialog mirror can be read, unless a quiet daemon from an
+# earlier entry already runs here.
 fm_afk_launch_quiet_needs_nothing() {
   local harness config
   [ ! -e "$FM_AFK_LAUNCH_STATE/.afk" ] || return 1
@@ -246,6 +247,7 @@ fm_afk_launch_quiet_needs_nothing() {
   # shellcheck source=bin/fm-supervision-engine-lib.sh
   . "$FM_AFK_LAUNCH_DIR/fm-supervision-engine-lib.sh" || return 1
   fm_supervision_host_attended_ready "$config" "$harness" || return 1
+  fm_supervision_host_main_key "$FM_AFK_LAUNCH_STATE" >/dev/null || return 1
   [ -f "$FM_AFK_LAUNCH_STATE/.host-mirror.jsonl" ] && [ -r "$FM_AFK_LAUNCH_STATE/.host-mirror.jsonl" ]
 }
 

@@ -852,7 +852,8 @@ unit_supervision_host_claude_home_runs_no_away_daemon() {
   st=$(mktemp -d "${TMPDIR:-/tmp}/fm-afk-host.XXXXXX")
   mkdir -p "$st/state" "$st/config"
   : > "$st/config/supervision-host"
-  # The dialog mirror the session's hooks keep.
+  # The main session's lock holder, and the dialog mirror its hooks keep.
+  printf '%s\n' "$$" > "$st/state/.lock"
   printf '{"seq":1,"tag":"captain","text":"watch the fleet"}\n' > "$st/state/.host-mirror.jsonl"
   enter_posture "$st" || fail "supervision host: could not enter fixture posture"
   out=$(FM_HOME="$st" FM_STATE_OVERRIDE="$st/state" "$LAUNCH" start-native 2>&1)
@@ -888,6 +889,22 @@ unit_supervision_host_claude_home_runs_no_away_daemon() {
   [ "$rc" -eq 0 ] || fail "supervision host: without the dialog mirror the quiet daemon must not be refused as if the attended host ran (rc=$rc): $out"
   mv "$st/state/.host-mirror.saved" "$st/state/.host-mirror.jsonl"
   pass "supervision host: quiet-check and the quiet daemon refusal require the dialog mirror the attended host feeds"
+  # Without a readable lock-holder identity the host has no main-session key
+  # and passes every attended wake to main, so quiet mode is not running there.
+  mkdir -p "$st/proc/$$"
+  printf '%s (bash) S\n' "$$" > "$st/proc/$$/stat"
+  printf 'bash\0' > "$st/proc/$$/cmdline"
+  out=$(FM_PROC_ROOT_OVERRIDE="$st/proc" FM_HOME="$st" FM_STATE_OVERRIDE="$st/state" "$LAUNCH" quiet-check 2>&1)
+  rc=$?
+  if [ "$rc" -eq 0 ] || [ -n "$out" ]; then
+    fail "supervision host: quiet-check with an unidentified main session must not claim the attended host keeps routine wakes off main (rc=$rc): $out"
+  fi
+  # shellcheck disable=SC2016 # $1 expands in the inner shell.
+  out=$(FM_PROC_ROOT_OVERRIDE="$st/proc" FM_HOME="$st" FM_STATE_OVERRIDE="$st/state" FM_AFK_MODE=quiet \
+    bash -c '. "$1"; fm_afk_launch_daemon_allowed' _ "$LAUNCH" 2>&1)
+  rc=$?
+  [ "$rc" -eq 0 ] || fail "supervision host: with an unidentified main session the quiet daemon must not be refused as if the attended host ran (rc=$rc): $out"
+  pass "supervision host: quiet-check and the quiet daemon refusal require an identified main session, as the attended host does"
   # Without a tool the host's turns need, the host passes every attended close
   # to main, so quiet mode is not already running there: quiet-check says
   # nothing and a quiet entry falls through to the daemon.
@@ -925,7 +942,7 @@ unit_supervision_host_claude_home_runs_no_away_daemon() {
   pass "supervision host: quiet-check and the quiet daemon refusal require node, jq, and the engine executable, as the attended host does"
   # The host's broken-session latch, as the host persists it after two engine
   # errors, keyed by the engine library's own latch key.
-  key=$(bash -c '. "$1/bin/fm-supervision-engine-lib.sh" && fm_supervision_host_config "$2/config" claude && fm_supervision_host_health_key "$2/state"' _ "$ROOT" "$st")
+  key=$(FM_STATE_OVERRIDE="$st/state" bash -c '. "$1/bin/fm-wake-lib.sh" && . "$1/bin/fm-supervision-engine-lib.sh" && fm_supervision_host_config "$2/config" claude && fm_supervision_host_health_key "$2/state"' _ "$ROOT" "$st")
   printf 'key=%s\nerrors=2\ncooldown=300\nretry_after=%s\n' "$key" "$(( $(date +%s) + 300 ))" > "$st/state/.supervision-host-health"
   out=$(FM_HOME="$st" FM_STATE_OVERRIDE="$st/state" "$LAUNCH" quiet-check 2>&1)
   rc=$?
@@ -986,6 +1003,7 @@ unit_supervision_host_other_harnesses_run_no_away_daemon() {
   done
   daemon_allowed kimi >/dev/null || fail "kimi has no arm owner to run the host, so it must keep the away daemon"
   printf 'claude\n' > "$st/config/supervision-host"
+  printf '%s\n' "$$" > "$st/state/.lock"
   printf '{"seq":1,"tag":"captain","text":"watch the fleet"}\n' > "$st/state/.host-mirror.jsonl"
   for harness in cursor codex; do
     out=$(daemon_allowed "$harness" quiet); rc=$?
