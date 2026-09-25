@@ -84,10 +84,13 @@
 #   fm-host-mirror.sh hook <harness>        a prompt-submit or turn-end hook payload on stdin
 #   fm-host-mirror.sh feed <session> new|resume
 #   fm-host-mirror.sh commit
+#   fm-host-mirror.sh check
 #   fm-host-mirror.sh verified <harness>
 # hook and commit always exit 0 and print nothing; feed exits 1 when
 # the mirror is missing, could not be read, or holds an invalid entry, and
-# prints nothing when there is nothing to feed.
+# prints nothing when there is nothing to feed; check exits 1 exactly when that
+# mirror would fail the feed, printing nothing, staging nothing, and moving no
+# cursor.
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -117,13 +120,13 @@ case "${1:-}" in
     # without the file, and a crewmate worktree with no config/, stay inert.
     [ -f "$CONFIG/supervision-host" ] || exit 0
     ;;
-  feed|commit) ;;
+  feed|commit|check) ;;
   -h|--help) sed -n '2,/^set -u/p' "${BASH_SOURCE[0]}" | sed '$d' | sed 's/^# \{0,1\}//'; exit 0 ;;
   *) usage ;;
 esac
 
 if ! command -v jq >/dev/null 2>&1 || [ ! -d "$STATE" ]; then
-  [ "$1" != feed ] || exit 1
+  case "$1" in feed|check) exit 1 ;; esac
   exit 0
 fi
 
@@ -137,6 +140,12 @@ MIRROR="$STATE/.host-mirror.jsonl"
 CURSOR="$STATE/.host-mirror-cursor"
 STAGED="$CURSOR.next"
 LOCK="$STATE/.host-mirror.lock"
+# Every entry must parse and carry its fields: a feed that would skip one
+# cannot vouch for the dialog it carries, so it fails and stages nothing.
+ENTRIES='[inputs | fromjson]
+  | if all(type == "object" and (.seq | type) == "number" and (.key | type) == "string"
+      and (.tag == "captain" or .tag == "main") and (.text | type) == "string")
+    then . else error("invalid mirror entry") end'
 
 # A writer records only the lock-owning primary session's dialog.
 writer_in_scope() {
@@ -295,6 +304,15 @@ case "$1" in
     fm_lock_release "$LOCK"
     exit 0
     ;;
+  check)
+    [ "$#" -eq 1 ] || usage
+    [ -f "$MIRROR" ] || exit 1
+    fm_lock_acquire_wait "$LOCK" || exit 1
+    jq -Rn "$ENTRIES" "$MIRROR" >/dev/null 2>&1
+    rc=$?
+    fm_lock_release "$LOCK"
+    exit "$rc"
+    ;;
 esac
 
 # feed <session> new|resume
@@ -316,12 +334,6 @@ fi
 if [ "$MODE" = new ] || [ "$CURSOR_SESSION" != "$SESSION" ]; then
   CURSOR_SEQ=0
 fi
-# Every entry must parse and carry its fields: a feed that would skip one
-# cannot vouch for the dialog it carries, so it fails and stages nothing.
-ENTRIES='[inputs | fromjson]
-  | if all(type == "object" and (.seq | type) == "number" and (.key | type) == "string"
-      and (.tag == "captain" or .tag == "main") and (.text | type) == "string")
-    then . else error("invalid mirror entry") end'
 if ! OUT=$(jq -Rrn --arg key "$KEY" --argjson after "$CURSOR_SEQ" --argjson cap "$FEED_CAP" "$ENTRIES"'
     | map(select(.key == $key and .seq > $after))
     | map("[\(.tag)] \(.text)")

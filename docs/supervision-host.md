@@ -15,7 +15,7 @@ Today it runs beside a Claude, Cursor, OpenCode, omp, Grok, or Codex primary, aw
 - Away (the record exists), the host hands each close to the engine, and main stays parked unless the host hands the wake back.
 - `/afk` launches no away daemon on an opted-in home of those harnesses, because the host is the away session there.
 - `/quiet` needs nothing where the attended host is ready, because the attended posture already is quiet mode; `bin/fm-afk-launch.sh quiet-check` checks the engine, required tools, verified writer, and available dialog mirror before a quiet entry refuses the daemon.
-  If the mirror is absent or unreadable, the attended host passes wakes to main and `/quiet` can use the daemon instead.
+  If the mirror is absent, unreadable, or holds an entry the feed would refuse (`bin/fm-host-mirror.sh check`), the attended host passes wakes to main and `/quiet` can use the daemon instead.
   While the broken-session latch holds, until a probe succeeds, `quiet-check` says instead that the session is paused, that routine wakes reach main until it recovers, and when it retries; no daemon starts.
   While the flag `state/.afk` of a quiet daemon from an earlier entry exists, the host stands aside exactly as the plain arm does.
 - Pi keeps its in-process branch whether or not the file exists, and no Pi engine is built.

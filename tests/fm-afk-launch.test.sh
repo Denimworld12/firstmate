@@ -854,7 +854,7 @@ unit_supervision_host_claude_home_runs_no_away_daemon() {
   : > "$st/config/supervision-host"
   # The main session's lock holder, and the dialog mirror its hooks keep.
   printf '%s\n' "$$" > "$st/state/.lock"
-  printf '{"seq":1,"tag":"captain","text":"watch the fleet"}\n' > "$st/state/.host-mirror.jsonl"
+  printf '{"seq":1,"key":"k","tag":"captain","text":"watch the fleet"}\n' > "$st/state/.host-mirror.jsonl"
   enter_posture "$st" || fail "supervision host: could not enter fixture posture"
   out=$(FM_HOME="$st" FM_STATE_OVERRIDE="$st/state" "$LAUNCH" start-native 2>&1)
   rc=$?
@@ -887,8 +887,22 @@ unit_supervision_host_claude_home_runs_no_away_daemon() {
     bash -c '. "$1"; fm_afk_launch_daemon_allowed' _ "$LAUNCH" 2>&1)
   rc=$?
   [ "$rc" -eq 0 ] || fail "supervision host: without the dialog mirror the quiet daemon must not be refused as if the attended host ran (rc=$rc): $out"
+  # A mirror entry the attended feed would refuse makes every attended wake
+  # reach main just the same.
+  printf '{"seq":1,"key":"k","tag":"captain","text":"watch the fleet"}\n{"seq":"two","tag":"captain"}\n' > "$st/state/.host-mirror.jsonl"
+  out=$(FM_HOME="$st" FM_STATE_OVERRIDE="$st/state" "$LAUNCH" quiet-check 2>&1)
+  rc=$?
+  if [ "$rc" -eq 0 ] || [ -n "$out" ]; then
+    fail "supervision host: quiet-check with a malformed dialog mirror must not claim the attended host keeps routine wakes off main (rc=$rc): $out"
+  fi
+  # shellcheck disable=SC2016 # $1 expands in the inner shell.
+  out=$(FM_HOME="$st" FM_STATE_OVERRIDE="$st/state" FM_AFK_MODE=quiet \
+    bash -c '. "$1"; fm_afk_launch_daemon_allowed' _ "$LAUNCH" 2>&1)
+  rc=$?
+  [ "$rc" -eq 0 ] || fail "supervision host: with a malformed dialog mirror the quiet daemon must not be refused as if the attended host ran (rc=$rc): $out"
+  [ ! -e "$st/state/.host-mirror-cursor.next" ] || fail "supervision host: quiet-check must stage no mirror cursor"
   mv "$st/state/.host-mirror.saved" "$st/state/.host-mirror.jsonl"
-  pass "supervision host: quiet-check and the quiet daemon refusal require the dialog mirror the attended host feeds"
+  pass "supervision host: quiet-check and the quiet daemon refusal require the readable, well-formed dialog mirror the attended host feeds"
   # Without a readable lock-holder identity the host has no main-session key
   # and passes every attended wake to main, so quiet mode is not running there.
   mkdir -p "$st/proc/$$"
@@ -1004,7 +1018,7 @@ unit_supervision_host_other_harnesses_run_no_away_daemon() {
   daemon_allowed kimi >/dev/null || fail "kimi has no arm owner to run the host, so it must keep the away daemon"
   printf 'claude\n' > "$st/config/supervision-host"
   printf '%s\n' "$$" > "$st/state/.lock"
-  printf '{"seq":1,"tag":"captain","text":"watch the fleet"}\n' > "$st/state/.host-mirror.jsonl"
+  printf '{"seq":1,"key":"k","tag":"captain","text":"watch the fleet"}\n' > "$st/state/.host-mirror.jsonl"
   for harness in cursor codex; do
     out=$(daemon_allowed "$harness" quiet); rc=$?
     [ "$rc" -ne 0 ] || fail "$harness: quiet mode must launch no daemon where the attended host runs"

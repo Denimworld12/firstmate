@@ -27,7 +27,7 @@
 # (docs/supervision-host.md "Postures": the home opted in, names a usable
 # engine and every tool its turns need, and the primary has a verified dialog
 # mirror, fm_supervision_host_attended_ready, whose file state/.host-mirror.jsonl
-# can be read), because that host
+# passes the feed's own check, bin/fm-host-mirror.sh check), because that host
 # already keeps the wakes it handles off main while the captain is present.
 # While its broken-session latch holds, until a probe succeeds, `quiet-check`
 # says instead that the session is paused, that routine wakes reach main until
@@ -235,8 +235,8 @@ fm_afk_launch_host_primary() {  # <harness>
 
 # True when quiet mode needs nothing on this home (the header's QUIET MODE):
 # where the attended supervision host runs, the main session it keys to can be
-# identified, and its dialog mirror can be read, unless a quiet daemon from an
-# earlier entry already runs here.
+# identified, and its dialog mirror passes the feed's own check, unless a quiet
+# daemon from an earlier entry already runs here.
 fm_afk_launch_quiet_needs_nothing() {
   local harness config
   [ ! -e "$FM_AFK_LAUNCH_STATE/.afk" ] || return 1
@@ -248,7 +248,7 @@ fm_afk_launch_quiet_needs_nothing() {
   . "$FM_AFK_LAUNCH_DIR/fm-supervision-engine-lib.sh" || return 1
   fm_supervision_host_attended_ready "$config" "$harness" || return 1
   fm_supervision_host_main_key "$FM_AFK_LAUNCH_STATE" >/dev/null || return 1
-  [ -f "$FM_AFK_LAUNCH_STATE/.host-mirror.jsonl" ] && [ -r "$FM_AFK_LAUNCH_STATE/.host-mirror.jsonl" ]
+  FM_STATE_OVERRIDE="$FM_AFK_LAUNCH_STATE" "$FM_AFK_LAUNCH_DIR/fm-host-mirror.sh" check
 }
 
 fm_afk_launch_quiet_statement() {
