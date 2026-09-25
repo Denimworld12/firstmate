@@ -1,0 +1,8 @@
+ok - attributed commit and PR commands are denied
+ok - human-written messages and read-only searches are allowed
+ok - message files named by the command are scanned, relative to the payload cwd
+ok - empty, unparsable, and --command inputs behave as documented
+ok - --message-file rejects an attributed commit message and names what to remove
+ok - a task worktree on any harness rejects attributed commits, keeps the project's hooks, and leaves other checkouts alone
+ok - a bare-repo layout refuses the spawn before any shared config change and leaves git working
+ok - a claude task spawn registers the attribution guard as a Bash PreToolUse hook

@@ -1,0 +1,10 @@
+== N2 adversarial: quoted -X GET inside a write body (expect 2)
+exit 2 : gh api repos/o/r/pulls/1 -f body="to read, pass -X GET.
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+== explicit non-GET write (expect 2)
+exit 2 : gh api -X PATCH repos/o/r/pulls/1 -f body="🤖 Generated with [Claude Code](x)"
+== reads/searches quoting the pattern (expect 0)
+exit 0 : gh api -X GET repos/o/r/pulls --jq ".[] | select(.body | test(\"Co-Authored-By: Claude\"))"
+exit 0 : git log --grep "Co-Authored-By: Claude <noreply@anthropic.com>"
+exit 0 : rg -n "Generated with \[Claude Code\]" docs
