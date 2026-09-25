@@ -140,11 +140,16 @@ MIRROR="$STATE/.host-mirror.jsonl"
 CURSOR="$STATE/.host-mirror-cursor"
 STAGED="$CURSOR.next"
 LOCK="$STATE/.host-mirror.lock"
-# Every entry must parse and carry its fields: a feed that would skip one
-# cannot vouch for the dialog it carries, so it fails and stages nothing.
-ENTRIES='[inputs | fromjson]
-  | if all(type == "object" and (.seq | type) == "number" and (.key | type) == "string"
-      and (.tag == "captain" or .tag == "main") and (.text | type) == "string")
+# Every entry must parse and carry its fields, with positive integral
+# sequence numbers rising in file order, and the file must end with a newline
+# (appends run under the lock, so a complete file always does): a feed that
+# would skip one cannot vouch for the dialog it carries, so it fails and
+# stages nothing. Read with jq -Rs.
+ENTRIES='if . == "" or endswith("\n") then .[:-1] else error("unterminated mirror record") end
+  | [split("\n")[] | fromjson]
+  | if all(type == "object" and (.seq | type) == "number" and .seq >= 1 and .seq == (.seq | floor)
+      and (.key | type) == "string" and (.tag == "captain" or .tag == "main") and (.text | type) == "string")
+      and (map(.seq) | [.[:-1], .[1:]] | transpose | all(.[0] < .[1]))
     then . else error("invalid mirror entry") end'
 
 # A writer records only the lock-owning primary session's dialog.
@@ -308,7 +313,7 @@ case "$1" in
     [ "$#" -eq 1 ] || usage
     [ -f "$MIRROR" ] || exit 1
     fm_lock_acquire_wait "$LOCK" || exit 1
-    jq -Rn "$ENTRIES" "$MIRROR" >/dev/null 2>&1
+    jq -Rs "$ENTRIES" "$MIRROR" >/dev/null 2>&1
     rc=$?
     fm_lock_release "$LOCK"
     [ "$rc" -eq 0 ] || exit 1
@@ -335,7 +340,7 @@ fi
 if [ "$MODE" = new ] || [ "$CURSOR_SESSION" != "$SESSION" ]; then
   CURSOR_SEQ=0
 fi
-if ! OUT=$(jq -Rrn --arg key "$KEY" --argjson after "$CURSOR_SEQ" --argjson cap "$FEED_CAP" "$ENTRIES"'
+if ! OUT=$(jq -Rrs --arg key "$KEY" --argjson after "$CURSOR_SEQ" --argjson cap "$FEED_CAP" "$ENTRIES"'
     | map(select(.key == $key and .seq > $after))
     | map("[\(.tag)] \(.text)")
     | reverse
@@ -349,7 +354,7 @@ if ! OUT=$(jq -Rrn --arg key "$KEY" --argjson after "$CURSOR_SEQ" --argjson cap 
   fm_lock_release "$LOCK"
   exit 1
 fi
-if ! LAST=$(jq -Rn "$ENTRIES"' | map(.seq) | max // 0' "$MIRROR" 2>/dev/null); then
+if ! LAST=$(jq -Rs "$ENTRIES"' | map(.seq) | max // 0' "$MIRROR" 2>/dev/null); then
   fm_lock_release "$LOCK"
   exit 1
 fi

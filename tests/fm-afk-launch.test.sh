@@ -887,20 +887,28 @@ unit_supervision_host_claude_home_runs_no_away_daemon() {
     bash -c '. "$1"; fm_afk_launch_daemon_allowed' _ "$LAUNCH" 2>&1)
   rc=$?
   [ "$rc" -eq 0 ] || fail "supervision host: without the dialog mirror the quiet daemon must not be refused as if the attended host ran (rc=$rc): $out"
-  # A mirror entry the attended feed would refuse makes every attended wake
-  # reach main just the same.
-  printf '{"seq":1,"key":"k","tag":"captain","text":"watch the fleet"}\n{"seq":"two","tag":"captain"}\n' > "$st/state/.host-mirror.jsonl"
-  out=$(FM_HOME="$st" FM_STATE_OVERRIDE="$st/state" "$LAUNCH" quiet-check 2>&1)
-  rc=$?
-  if [ "$rc" -ne 1 ] || [ -n "$out" ]; then
-    fail "supervision host: quiet-check with a malformed dialog mirror must exit 1 silently (rc=$rc): $out"
-  fi
-  # shellcheck disable=SC2016 # $1 expands in the inner shell.
-  out=$(FM_HOME="$st" FM_STATE_OVERRIDE="$st/state" FM_AFK_MODE=quiet \
-    bash -c '. "$1"; fm_afk_launch_daemon_allowed' _ "$LAUNCH" 2>&1)
-  rc=$?
-  [ "$rc" -eq 0 ] || fail "supervision host: with a malformed dialog mirror the quiet daemon must not be refused as if the attended host ran (rc=$rc): $out"
-  [ ! -e "$st/state/.host-mirror-cursor.next" ] || fail "supervision host: quiet-check must stage no mirror cursor"
+  # A mirror the attended feed would refuse (a malformed entry, a sequence
+  # number that is not a positive integer or does not rise, or an unterminated
+  # final record) makes every attended wake reach main just the same.
+  good='{"seq":1,"key":"k","tag":"captain","text":"watch the fleet"}'
+  for bad in "$good"$'\n''{"seq":"two","tag":"captain"}'$'\n' \
+    '{"seq":0,"key":"k","tag":"captain","text":"watch the fleet"}'$'\n' \
+    '{"seq":1.5,"key":"k","tag":"captain","text":"watch the fleet"}'$'\n' \
+    '{"seq":2,"key":"k","tag":"captain","text":"one"}'$'\n''{"seq":2,"key":"k","tag":"main","text":"two"}'$'\n' \
+    "$good"; do
+    printf '%s' "$bad" > "$st/state/.host-mirror.jsonl"
+    out=$(FM_HOME="$st" FM_STATE_OVERRIDE="$st/state" "$LAUNCH" quiet-check 2>&1)
+    rc=$?
+    if [ "$rc" -ne 1 ] || [ -n "$out" ]; then
+      fail "supervision host: quiet-check with a mirror the feed refuses must exit 1 silently (rc=$rc): $out"$'\n'"$bad"
+    fi
+    # shellcheck disable=SC2016 # $1 expands in the inner shell.
+    out=$(FM_HOME="$st" FM_STATE_OVERRIDE="$st/state" FM_AFK_MODE=quiet \
+      bash -c '. "$1"; fm_afk_launch_daemon_allowed' _ "$LAUNCH" 2>&1)
+    rc=$?
+    [ "$rc" -eq 0 ] || fail "supervision host: with a mirror the feed refuses the quiet daemon must not be refused as if the attended host ran (rc=$rc): $out"$'\n'"$bad"
+    [ ! -e "$st/state/.host-mirror-cursor.next" ] || fail "supervision host: quiet-check must stage no mirror cursor"
+  done
   mv "$st/state/.host-mirror.saved" "$st/state/.host-mirror.jsonl"
   pass "supervision host: quiet-check and the quiet daemon refusal require the readable, well-formed dialog mirror the attended host feeds"
   # Without a readable lock-holder identity the host has no main-session key

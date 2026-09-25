@@ -410,6 +410,26 @@ test_recycled_lock_pid_is_a_new_main_session() {
   pass "mirror: a later lock holder with a recycled pid is a new main session"
 }
 
+# A mirror whose sequence numbers are not positive integers rising in file
+# order, or whose final record is unterminated, cannot vouch for the dialog it
+# carries: check and feed both refuse it, and the feed stages nothing.
+test_feed_refuses_unfeedable_sequences_and_unterminated_records() {
+  local home bad good
+  home=$(make_home unfeedable)
+  as_session "$home" "$SAY"'say captain "a sound ask"; "$MIRROR" check' || fail "check refused a sound mirror"
+  good=$(cat "$home/state/.host-mirror.jsonl")
+  for bad in "$(printf '%s' "$good" | jq -c '.seq = 0')"$'\n' \
+    "$(printf '%s' "$good" | jq -c '.seq = 1.5')"$'\n' \
+    "$good"$'\n'"$good"$'\n' \
+    "$good"; do
+    printf '%s' "$bad" > "$home/state/.host-mirror.jsonl"
+    as_session "$home" '"$MIRROR" check' && fail "check accepted an unfeedable mirror:"$'\n'"$bad"
+    as_session "$home" '"$MIRROR" feed s1 new' >/dev/null && fail "the feed accepted an unfeedable mirror:"$'\n'"$bad"
+    [ ! -e "$home/state/.host-mirror-cursor.next" ] || fail "the feed staged a cursor for an unfeedable mirror"
+  done
+  pass "mirror: check and feed refuse a mirror with a zero, fractional, or non-rising sequence, or an unterminated final record"
+}
+
 test_recreated_mirror_continues_past_both_cursors() {
   local home
   home=$(make_home recreate)
@@ -453,5 +473,6 @@ test_codex_message_refused_by_the_mirror_is_retried
 test_codex_record_still_being_written_is_read_once_complete
 test_feed_resumes_reanchors_and_is_bounded
 test_recycled_lock_pid_is_a_new_main_session
+test_feed_refuses_unfeedable_sequences_and_unterminated_records
 test_recreated_mirror_continues_past_both_cursors
 test_verified_writers
