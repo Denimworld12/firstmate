@@ -25,8 +25,11 @@
 # submits its Stop-hook rewake inside <task-notification>, with no other field
 # to tell it from a typed prompt (tests/fm-host-mirror-live-e2e.test.sh proves
 # it).
-# In a Codex transcript the user items Codex adds itself open with a wrapper
-# tag or with its AGENTS.md preamble and are dropped the same way; the
+# In a Codex transcript the user items Codex adds itself open with its
+# AGENTS.md preamble or one of its wrapper tags (<recommended_plugins>,
+# <hook_prompt>, <environment_context>, <user_instructions>, <turn_aborted>)
+# and are dropped the same way, while a captain prompt opening with any other
+# tag is mirrored; the
 # transcript's read position is $STATE/.host-mirror-codex ("<path>\t<lines>"),
 # which never passes a message the mirror could not record.
 # Every writer is a silent no-op unless this home opted into the supervision
@@ -158,7 +161,10 @@ append_entry() {  # <captain|main> <text> [<id>]
   if [ "$tag" = captain ]; then
     case "${text#"${text%%[![:space:]]*}"}" in
       '<task-notification>'*) return 0 ;;
-      '<'*|'# AGENTS.md instructions'*) [ "$SOURCE_HARNESS" != codex ] || return 0 ;;
+      '# AGENTS.md instructions'*|'<recommended_plugins>'*|'<recommended_plugins '*|'<hook_prompt>'*|'<hook_prompt '*\
+        |'<environment_context>'*|'<environment_context '*|'<user_instructions>'*|'<user_instructions '*\
+        |'<turn_aborted>'*|'<turn_aborted '*)
+        [ "$SOURCE_HARNESS" != codex ] || return 0 ;;
     esac
     ! operational "$text" || return 0
   fi

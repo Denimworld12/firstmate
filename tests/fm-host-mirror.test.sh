@@ -110,6 +110,10 @@ test_codex_hooks_read_the_rollout_transcript() {
     item developer 'developer instructions'
     item user '# AGENTS.md instructions for /home/fleet'
     item user '<environment_context>cwd</environment_context>'
+    item user '<recommended_plugins>none</recommended_plugins>'
+    item user '<user_instructions>be brief</user_instructions>'
+    item user '<turn_aborted>interrupted</turn_aborted>'
+    item user '<plan>Ship the export fix first.</plan>'
     item user 'Dispatch the export worker.'
     item assistant 'Captain, dispatching it now.'
     jq -cn '{type: "response_item", payload: {type: "function_call", name: "exec_command"}}'
@@ -124,12 +128,13 @@ test_codex_hooks_read_the_rollout_transcript() {
     run "$CODEX_POST" "{\"hook_event_name\":\"PostToolUse\",\"transcript_path\":\"$ROLLOUT\"}"
     run "$CODEX_STOP" "{\"hook_event_name\":\"Stop\",\"transcript_path\":\"$ROLLOUT\",\"last_assistant_message\":\"Will do.\"}"
   ' || fail "a Codex mirror hook failed"
-  assert_equals "captain|Dispatch the export worker.
+  assert_equals "captain|<plan>Ship the export fix first.</plan>
+captain|Dispatch the export worker.
 main|Captain, dispatching it now.
 captain|Also tell me when export finishes.
 main|Will do." "$(entries "$home")" \
-    "the Codex hooks must mirror the transcript's typed prompts, steers, and replies once each, without Codex's own injected items"
-  pass "mirror: Codex's hooks read its rollout transcript, so a mid-turn steer is mirrored once and injected items never are"
+    "the Codex hooks must mirror the transcript's typed prompts, steers, and replies once each, without Codex's own injected items, while a prompt opening with another tag is mirrored"
+  pass "mirror: Codex's hooks read its rollout transcript, so a mid-turn steer and a tag-led prompt are mirrored once and injected items never are"
 }
 
 # Non-host invariance: on a home without config/supervision-host, every surface
