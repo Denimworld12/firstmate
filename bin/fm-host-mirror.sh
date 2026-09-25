@@ -162,7 +162,7 @@ append_entry() {  # <captain|main> <text> [<id>]
     esac
     ! operational "$text" || return 0
   fi
-  key=$(fm_supervision_host_main_key "$STATE")
+  key=$(fm_supervision_host_main_key "$STATE") || return 1
   fm_lock_acquire_wait "$LOCK" || return 1
   if [ -e "$MIRROR" ] && ! chmod 600 "$MIRROR" 2>/dev/null; then
     fm_lock_release "$LOCK"
@@ -298,7 +298,7 @@ MODE=$3
 case "$MODE" in new|resume) ;; *) usage ;; esac
 rm -f "$STAGED"
 [ -f "$MIRROR" ] || exit 1
-KEY=$(fm_supervision_host_main_key "$STATE")
+KEY=$(fm_supervision_host_main_key "$STATE") || exit 1
 fm_lock_acquire_wait "$LOCK" || exit 1
 CURSOR_SEQ=0
 CURSOR_SESSION=

@@ -556,6 +556,36 @@ test_attended_main_only_close_passes_straight_to_main() {
   pass "host: an attended decision close stays main's exactly as the plain arm delivers it"
 }
 
+# The session-lock holder's process identity cannot be read (its proc entry
+# is truncated), so no main-session key exists: the close reaches main exactly
+# as the arm printed it, before any mirror feed or engine turn.
+test_attended_close_with_unidentified_main_session_passes_to_main() {
+  local home
+  home=$(make_home attended-unidentified attended)
+  FM_HOME="$home" FM_CREW_STATE_BIN="$home/fakebin/fm-crew-state.sh" PATH="$home/fakebin:$PATH" \
+    "$FAKE_CLAUDE" -c '
+      printf "%s\n" "$$" > "$FM_HOME/state/.lock"
+      printf "%s\n" "$$" >> "$FM_HOME/claude-pids"
+      mkdir -p "$FM_HOME/proc/$$"
+      printf "%s (claude) S\n" "$$" > "$FM_HOME/proc/$$/stat"
+      printf "claude\0" > "$FM_HOME/proc/$$/cmdline"
+      export FM_PROC_ROOT_OVERRIDE="$FM_HOME/proc"
+      "$0" park > "$FM_HOME/host.out" 2>&1
+      printf "%s\n" "$?" > "$FM_HOME/host.rc"
+    ' "$HOST" 2>> "$home/claude.err" &
+  wait_until 150 watcher_live "$home" || fail "unidentified: the host never started a watcher cycle: $(cat "$home/host.out")"
+  append_status "$home" 'step one'
+  wait_until 250 host_exited "$home" || fail "unidentified: the close did not reach main: $(cat "$home/state/.supervision-host.log")"
+  expect_code 0 "$(cat "$home/host.rc")" "a close for an unidentified main session must exit 0"
+  assert_re '^signal: .*demo.status' "$home/host.out" "the close must carry the watcher's reason line"
+  assert_no_re '^supervision-host' "$home/host.out" "the close must reach main exactly as the arm printed it"
+  [ "$(engine_calls "$home")" -eq 0 ] || fail "unidentified: the engine ran without a main-session key"
+  assert_grep 'demo.status' "$home/state/.wake-queue" "the wake must stay queued for main"
+  assert_re '	pass-through	attended	the main session could not be identified	signal:' "$home/state/.supervision-host.log" \
+    "the ledger must record why the close went to main"
+  pass "host: an attended close whose main session cannot be identified reaches main and runs no engine turn"
+}
+
 # The captain returns after the loop accepted a decision close away but before
 # its turn starts: the turn meets the attended rule, so the close still reaches
 # main exactly as the arm printed it instead of being scoped to nothing.
@@ -1434,6 +1464,7 @@ test_attended_routine_wake_is_handled_on_the_engine_and_stays_off_main
 test_attended_captain_outcome_reaches_main_through_branch_outcomes
 test_captain_leaving_mid_turn_keeps_its_captain_outcome_for_the_return
 test_attended_main_only_close_passes_straight_to_main
+test_attended_close_with_unidentified_main_session_passes_to_main
 test_close_accepted_away_that_turns_attended_passes_to_main
 test_primary_without_a_verified_mirror_runs_away_only
 test_attended_wake_carries_the_dialog_mirror

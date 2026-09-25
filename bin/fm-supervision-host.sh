@@ -40,8 +40,9 @@
 #     it, as without the host, unless the supervision session may take it: the
 #     home names a usable engine, its turns have every tool they need, this
 #     primary has a verified dialog mirror (bin/fm-host-mirror.sh verified;
-#     fm_supervision_host_attended_ready owns the list), the session is not
-#     cooling down after engine errors, and the Pi branch's offer rule
+#     fm_supervision_host_attended_ready owns the list), the main session's
+#     lock holder can be identified, the session is not cooling down after
+#     engine errors, and the Pi branch's offer rule
 #     (bin/fm-branch-dispatch.mjs offer) says the branch may take this close,
 #     so main-only classes (check triggers, decision-owned triggers, a scan
 #     that is unsafe or holds nothing for the branch) stay main's;
@@ -583,13 +584,13 @@ start_successor() {  # <predecessor-arm-pid>
 # and ENGINE_MODE (new|resume).
 choose_conversation() {
   local key recorded_key recorded_session recorded_engine recorded_model turns
-  key=$(fm_supervision_host_main_key "$STATE")
+  key=$(fm_supervision_host_main_key "$STATE") || key=
   recorded_key=$(sed -n 's/^key=//p' "$ENGINE_RECORD" 2>/dev/null | head -n 1)
   recorded_session=$(sed -n 's/^session=//p' "$ENGINE_RECORD" 2>/dev/null | head -n 1)
   recorded_engine=$(sed -n 's/^engine=//p' "$ENGINE_RECORD" 2>/dev/null | head -n 1)
   recorded_model=$(sed -n 's/^model=//p' "$ENGINE_RECORD" 2>/dev/null | head -n 1)
   turns=$(numeric_or "$(sed -n 's/^turns=//p' "$ENGINE_RECORD" 2>/dev/null | head -n 1)" 0)
-  if [ -n "$recorded_session" ] && [ "$recorded_key" = "$key" ] \
+  if [ -n "$key" ] && [ -n "$recorded_session" ] && [ "$recorded_key" = "$key" ] \
     && [ "$recorded_engine" = "$FM_SUPERVISION_ENGINE" ] \
     && [ "$recorded_model" = "$FM_SUPERVISION_ENGINE_MODEL" ] \
     && [ "$turns" -lt "$ROTATE_TURNS" ] && [ -s "$PROMPT_FILE" ]; then
@@ -644,10 +645,10 @@ health_key() {
 # Sets HEALTH_ERRORS, HEALTH_COOLDOWN, and HEALTH_RETRY for the current key.
 health_load() {
   local key
-  key=$(health_key)
   HEALTH_ERRORS=0
   HEALTH_COOLDOWN=0
   HEALTH_RETRY=0
+  key=$(health_key) || return 0
   [ "$(sed -n 's/^key=//p' "$HEALTH_FILE" 2>/dev/null | head -n 1)" = "$key" ] || return 0
   HEALTH_ERRORS=$(numeric_or "$(sed -n 's/^errors=//p' "$HEALTH_FILE" 2>/dev/null | head -n 1)" 0)
   HEALTH_COOLDOWN=$(numeric_or "$(sed -n 's/^cooldown=//p' "$HEALTH_FILE" 2>/dev/null | head -n 1)" 0)
@@ -655,10 +656,11 @@ health_load() {
 }
 
 health_save() {
-  local tmp
+  local key tmp
+  key=$(health_key) || return 0
   tmp=$(mktemp "$HEALTH_FILE.tmp.XXXXXX" 2>/dev/null) || return 0
   printf 'key=%s\nerrors=%s\ncooldown=%s\nretry_after=%s\n' \
-    "$(health_key)" "$HEALTH_ERRORS" "$HEALTH_COOLDOWN" "$HEALTH_RETRY" > "$tmp" 2>/dev/null \
+    "$key" "$HEALTH_ERRORS" "$HEALTH_COOLDOWN" "$HEALTH_RETRY" > "$tmp" 2>/dev/null \
     && mv -f "$tmp" "$HEALTH_FILE" 2>/dev/null
   rm -f "$tmp" 2>/dev/null || true
 }
@@ -901,6 +903,8 @@ attended_acceptor() {  # <first-reason-line>
   ATTENDED_WHY=
   if ! fm_supervision_host_attended_ready "$CONFIG" "$PRIMARY"; then
     ATTENDED_WHY=$FM_SUPERVISION_HOST_UNREADY
+  elif ! fm_supervision_host_main_key "$STATE" >/dev/null; then
+    ATTENDED_WHY="the main session could not be identified"
   elif health_cooling; then
     ATTENDED_WHY="the supervision session is cooling down after engine errors"
   elif ! offer=$(printf '%s\n' "$1" | node "$SCRIPT_DIR/fm-branch-dispatch.mjs" offer 2>/dev/null); then

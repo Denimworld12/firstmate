@@ -135,26 +135,25 @@ fm_supervision_host_attended_ready() {
 # a checksum of its session sidecar, so a later session given a recycled lock
 # pid never shares it. The host keys its engine conversation and broken-session
 # latch to it, and the dialog mirror (bin/fm-host-mirror.sh) keys each entry and
-# feed to it. When the holder's identity cannot be read, the key is one no other
-# call prints, so nothing kept under an earlier key is reused.
+# feed to it. When the holder's identity cannot be read, it prints nothing and
+# fails: an attended wake then reaches main, a mirror writer records nothing,
+# and no conversation or latch kept under an earlier key is reused.
 fm_supervision_host_main_key() {
   local pid identity
   pid=$(sed -n '1p' "$1/.lock" 2>/dev/null)
-  if identity=$(fm_pid_identity "$pid" 2>/dev/null) && [ -n "$identity" ]; then
-    identity=$(printf '%s\n' "$identity" | cksum | awk '{ print $1 }')
-  else
-    identity="unread-$$-$RANDOM$RANDOM-$(date +%s)"
-  fi
-  printf '%s:%s:%s\n' "$pid" "$identity" \
+  identity=$(fm_pid_identity "$pid" 2>/dev/null) && [ -n "$identity" ] || return 1
+  printf '%s:%s:%s\n' "$pid" "$(printf '%s\n' "$identity" | cksum | awk '{ print $1 }')" \
     "$(sed -n '1p' "$1/.lock-session" 2>/dev/null | cksum | awk '{ print $1 }')"
 }
 
 # fm_supervision_host_health_key <state-dir>: the key the host's
 # broken-session latch (bin/fm-supervision-host.sh, state/.supervision-host-health)
-# is kept under: the current main session, engine, and model. Needs
-# fm_supervision_host_config first.
+# is kept under: the current main session, engine, and model; fails with no
+# main-session key. Needs fm_supervision_host_config first.
 fm_supervision_host_health_key() {
-  printf '%s|%s|%s\n' "$(fm_supervision_host_main_key "$1")" "$FM_SUPERVISION_ENGINE" "$FM_SUPERVISION_ENGINE_MODEL"
+  local key
+  key=$(fm_supervision_host_main_key "$1") || return 1
+  printf '%s|%s|%s\n' "$key" "$FM_SUPERVISION_ENGINE" "$FM_SUPERVISION_ENGINE_MODEL"
 }
 
 # fm_supervision_host_paused_until <state-dir>: while that latch holds, from
@@ -162,8 +161,9 @@ fm_supervision_host_health_key() {
 # probes the engine (every wake before it reaches main) and succeed; otherwise
 # fail. Needs fm_supervision_host_config first.
 fm_supervision_host_paused_until() {
-  local file="$1/.supervision-host-health" cooldown retry
-  [ "$(sed -n 's/^key=//p' "$file" 2>/dev/null | head -n 1)" = "$(fm_supervision_host_health_key "$1")" ] || return 1
+  local file="$1/.supervision-host-health" key cooldown retry
+  key=$(fm_supervision_host_health_key "$1") || return 1
+  [ "$(sed -n 's/^key=//p' "$file" 2>/dev/null | head -n 1)" = "$key" ] || return 1
   cooldown=$(sed -n 's/^cooldown=//p' "$file" 2>/dev/null | head -n 1)
   retry=$(sed -n 's/^retry_after=//p' "$file" 2>/dev/null | head -n 1)
   case "$cooldown" in ''|*[!0-9]*) return 1 ;; esac
