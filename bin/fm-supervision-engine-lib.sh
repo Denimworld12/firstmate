@@ -108,8 +108,8 @@ EOF
 # bound (perl, timeout, or gtimeout), and primary's mirror writer are ready;
 # otherwise 1, with FM_SUPERVISION_HOST_UNREADY naming why. The host's
 # attended acceptor and quiet mode (bin/fm-afk-launch.sh) share this check;
-# the host feed checks mirror contents, while quiet-check also requires the
-# mirror file to be present and readable.
+# the host feed checks mirror contents, while quiet-check calls that mirror's
+# read-only validation before claiming readiness.
 fm_supervision_host_attended_ready() {
   FM_SUPERVISION_HOST_UNREADY=
   if ! fm_supervision_host_config "$1" "$2" || [ -z "$FM_SUPERVISION_ENGINE" ]; then

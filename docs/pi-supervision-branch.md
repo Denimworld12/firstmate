@@ -15,7 +15,7 @@ The design source is the captain-approved forked-supervision architecture board,
 
 This in-process supervision branch is Pi-only by construction:
 
-- The branch lives in `.pi/extensions/fm-branch-supervision.ts`, which only a Pi primary ever loads; no other harness gains branch supervision behavior.
+- The in-process branch lives in `.pi/extensions/fm-branch-supervision.ts`, which only a Pi primary ever loads; the opted-in non-Pi host has its own runtime ([supervision-host.md](supervision-host.md)).
 - In a home with no branch state, the bash-side additions remain inert (`tests/fm-branch-supervision.test.sh`); `bin/fm-lease-lib.sh` owns how a pre-existing lease is honored on any harness.
   A home on any harness that already has an outcome store still receives the shared drain compatibility recovery described in [Lost-wake outcome backstop](#lost-wake-outcome-backstop).
 - It does not change which harness is primary and never moves a home to Pi.
