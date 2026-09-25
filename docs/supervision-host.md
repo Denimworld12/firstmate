@@ -82,8 +82,8 @@ Tool traffic is never mirrored; the engine reads files and records itself.
 A new engine conversation re-anchors on the current main session's newest entries, and a resumed one gets only what is new, so an earlier session's dialog never steers today's.
 A primary's mirror is verified only when its writers record the session's dialog from its first captain prompt, and only a verified primary runs the attended posture; every other primary keeps every attended close on main, and its away posture needs no mirror and is unchanged.
 omp has no verified writer yet, because no omp was available to prove one against.
-Grok and OpenCode still have mirror writers, but they are not verified for attended use: their session takes the fleet lock during its first turn, so those writers cannot capture its first captain prompt and the engine would judge without the captain's opening words.
-Follow-up: capturing that first prompt would make their writers eligible for attended verification.
+Grok and OpenCode have no writer: their session takes the fleet lock during its first turn, so that turn's captain prompt could never be recorded and the engine would judge without the captain's opening words, and no captain dialog is kept that nothing reads.
+Follow-up: capturing that first prompt on Grok and OpenCode would reintroduce their writers and let them run the attended posture.
 A captain message typed while an engine turn is already running reaches the engine at its next wake.
 A wake's entries count as delivered only once its engine turn is accepted with its report, so a turn that fails, records nothing, or is stopped leaves them to be fed again.
 An attended wake whose mirror is missing or cannot be read, or holds an entry that does not parse, reaches main with `the dialog mirror could not be read` before any engine turn, and the cursor stays where it was; an away wake never reads the mirror or moves its cursor.
