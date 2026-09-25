@@ -892,8 +892,8 @@ unit_supervision_host_claude_home_runs_no_away_daemon() {
   printf '{"seq":1,"key":"k","tag":"captain","text":"watch the fleet"}\n{"seq":"two","tag":"captain"}\n' > "$st/state/.host-mirror.jsonl"
   out=$(FM_HOME="$st" FM_STATE_OVERRIDE="$st/state" "$LAUNCH" quiet-check 2>&1)
   rc=$?
-  if [ "$rc" -eq 0 ] || [ -n "$out" ]; then
-    fail "supervision host: quiet-check with a malformed dialog mirror must not claim the attended host keeps routine wakes off main (rc=$rc): $out"
+  if [ "$rc" -ne 1 ] || [ -n "$out" ]; then
+    fail "supervision host: quiet-check with a malformed dialog mirror must exit 1 silently (rc=$rc): $out"
   fi
   # shellcheck disable=SC2016 # $1 expands in the inner shell.
   out=$(FM_HOME="$st" FM_STATE_OVERRIDE="$st/state" FM_AFK_MODE=quiet \

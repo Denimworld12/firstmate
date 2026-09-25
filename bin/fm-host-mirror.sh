@@ -311,7 +311,8 @@ case "$1" in
     jq -Rn "$ENTRIES" "$MIRROR" >/dev/null 2>&1
     rc=$?
     fm_lock_release "$LOCK"
-    exit "$rc"
+    [ "$rc" -eq 0 ] || exit 1
+    exit 0
     ;;
 esac
 
