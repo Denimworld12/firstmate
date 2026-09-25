@@ -29,9 +29,9 @@
 # AGENTS.md preamble or one of its wrapper tags (<recommended_plugins>,
 # <hook_prompt>, <environment_context>, <user_instructions>, <turn_aborted>)
 # and are dropped the same way, while a captain prompt opening with any other
-# tag is mirrored; the
-# transcript's read position is $STATE/.host-mirror-codex ("<path>\t<lines>"),
-# which never passes a message the mirror could not record.
+# tag is mirrored. The transcript's read position is
+# $STATE/.host-mirror-codex ("<path>\t<lines>"), which never passes a message
+# the mirror could not record.
 # Every writer is a silent no-op unless this home opted into the supervision
 # host (config/supervision-host, checked before anything else runs), the hook
 # runs in a genuine primary checkout, and this session holds the fleet lock, so
@@ -58,7 +58,7 @@
 # entry already fed to that engine conversation. `feed <session> new|resume`
 # prints what the next wake carries, one "[captain] ..." or "[main] ..." entry
 # after another, oldest first, and fails, staging nothing, when the mirror is
-# missing, cannot be read, or holds an entry that does not parse; otherwise it
+# missing, cannot be read, or fails the file validation below; otherwise it
 # stages the cursor it would reach in $STATE/.host-mirror-cursor.next, and
 # `commit` advances the cursor to it once the engine turn that carried the wake
 # is accepted with its report, so a wake the engine never completed leaves its
@@ -88,9 +88,10 @@
 #   fm-host-mirror.sh verified <harness>
 # hook and commit always exit 0 and print nothing; feed exits 1 when
 # the mirror is missing, could not be read, or holds an invalid entry, and
-# prints nothing when there is nothing to feed; check exits 1 exactly when that
-# mirror would fail the feed, printing nothing, staging nothing, and moving no
-# cursor.
+# prints nothing when there is nothing to feed; check validates only the mirror
+# file, exiting 1 when its contents would fail the feed, and prints nothing,
+# stages nothing, and moves no cursor. Feed also requires an identifiable main
+# session; quiet-check tests that key separately.
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
