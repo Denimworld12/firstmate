@@ -1,0 +1,70 @@
+primary session=fm-lab-primary-live-3517-9572 lab=/var/folders/5x/4nqprlbx0518k3ybcb1sz6gr0000gn/T//fm-lab-home-501/primary-live-2CVwbx
+workspace=w1
+pane=w1:p1
+CLAUDE PRIMARY OUTPUT:
+env -u NO_MISTAKES_GATE -u FM_TEST_SEAM FM_TEST_HARNESS=omp FM_HOME='/var/folders/5x/4nqprlbx0518k3ybcb1sz6gr0000gn/T//
+fm-lab-home-501/primary-live-2CVwbx' claude -p 'Run bin/fm-harness.sh own using Bash and quote its exact output. Do not
+ modify files.' --allowedTools 'Bash(*)'
+01M3AX1TJX6ESSN5R2G88FEAMB HEAD*?
+❯ env -u NO_MISTAKES_GATE -u FM_TEST_SEAM FM_TEST_HARNESS=omp FM_HOME='/var/folders/5x/4nqprlbx0518k3ybcb1sz6gr0000gn/T
+//fm-lab-home-501/primary-live-2CVwbx' claude -p 'Run bin/fm-harness.sh own using Bash and quote its exact output. Do n
+ot modify files.' --allowedTools 'Bash(*)'
+Captain, here is the exact output of `bin/fm-harness.sh own`:
+
+```
+claude
+```
+01M3AX1TJX6ESSN5R2G88FEAMB HEAD*? 7s
+❯
+ONE-SHOT codex tab=w1:t2 pane=w1:p2
+env -u NO_MISTAKES_GATE FM_HOME='/var/folders/5x/4nqprlbx0518k3ybcb1sz6gr0000gn/T//fm-lab-home-501/primary-live-2CVwbx'
+codex exec 'Reply only: LAB-CODEX-OK'
+01M3AX1TJX6ESSN5R2G88FEAMB HEAD*?
+❯ env -u NO_MISTAKES_GATE FM_HOME='/var/folders/5x/4nqprlbx0518k3ybcb1sz6gr0000gn/T//fm-lab-home-501/primary-live-2CVwbx
+' codex exec 'Reply only: LAB-CODEX-OK'
+OpenAI Codex v0.155.1
+--------
+workdir: /Users/kunchen/.no-mistakes/worktrees/52b07e9083e7/01M3AX1TJX6ESSN5R2G88FEAMB
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: danger-full-access
+reasoning effort: low
+reasoning summaries: none
+session id: 01a0d628-35c8-7490-b3b6-6ff3f3b9e1d7
+--------
+user
+Reply only: LAB-CODEX-OK
+warning: Skill descriptions were shortened to fit the skills context budget. Codex can still see every skill, but some d
+escriptions are shorter. Disable unused skills or plugins to leave more room for the rest.
+hook: SessionStart
+hook: SessionStart
+hook: SessionStart
+hook: SessionStart
+hook: SessionStart Completed
+hook: SessionStart Completed
+hook: SessionStart Completed
+hook: SessionStart Completed
+codex
+LAB-CODEX-OK
+tokens used
+19,204
+01M3AX1TJX6ESSN5R2G88FEAMB HEAD*? 10s
+❯
+ONE-SHOT opencode tab=w1:t3 pane=w1:p3
+env -u NO_MISTAKES_GATE FM_HOME='/var/folders/5x/4nqprlbx0518k3ybcb1sz6gr0000gn/T//fm-lab-home-501/primary-live-2CVwbx'
+opencode run 'Reply only: LAB-OPENCODE-OK'
+01M3AX1TJX6ESSN5R2G88FEAMB HEAD*?
+❯ env -u NO_MISTAKES_GATE FM_HOME='/var/folders/5x/4nqprlbx0518k3ybcb1sz6gr0000gn/T//fm-lab-home-501/primary-live-2CVwbx
+' opencode run 'Reply only: LAB-OPENCODE-OK'
+
+> build · gpt-5.5
+ONE-SHOT pi tab=w1:t4 pane=w1:p4
+env -u NO_MISTAKES_GATE FM_HOME='/var/folders/5x/4nqprlbx0518k3ybcb1sz6gr0000gn/T//fm-lab-home-501/primary-live-2CVwbx'
+pi -p --no-session 'Reply only: LAB-PI-OK'
+01M3AX1TJX6ESSN5R2G88FEAMB HEAD*?
+❯ env -u NO_MISTAKES_GATE FM_HOME='/var/folders/5x/4nqprlbx0518k3ybcb1sz6gr0000gn/T//fm-lab-home-501/primary-live-2CVwbx
+' pi -p --no-session 'Reply only: LAB-PI-OK'
+LAB-PI-OK
+01M3AX1TJX6ESSN5R2G88FEAMB HEAD*? 2s
+❯

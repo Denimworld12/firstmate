@@ -1,0 +1,28 @@
+ok - fm-gate-refuse-lib: refuses when NO_MISTAKES_GATE is set outside a lab
+ok - fm-gate-refuse-lib: refuses when NO_MISTAKES_GATE is set empty
+ok - fm-gate-refuse-lib: refuses from a gate worktree via git-common-dir (marker unset)
+ok - fm-gate-refuse-lib: no-op for a normal session (neither signal, set -eu clean)
+ok - fm-gate-refuse-lib: a marked lab home authorizes the gate lifecycle call
+ok - fm-gate-refuse-lib: a nested lab path authorizes against the outermost marked dir
+ok - fm-gate-refuse-lib: a forged marker on a non-lab temp dir refuses
+ok - fm-gate-refuse-lib: a real-home-shaped dir outside the temp root refuses even with a valid marker
+ok - fm-gate-refuse-lib: a forged marker binding refuses
+ok - fm-gate-refuse-lib: the default tmux target refuses inside a lab home
+ok - fm-gate-refuse-lib: TMUX_TMPDIR inside the lab authorizes the tmux backend
+ok - fm-gate-refuse-lib: another lab's socket dir or tool never authorizes this lab's home
+ok - fm-gate-refuse-lib: FM_STATE_OVERRIDE/FM_DATA_OVERRIDE outside the lab refuse; inside authorize
+ok - fm-gate-refuse-lib: lab-local symlinks authorize only when their target stays inside the lab
+ok - fm-gate-refuse-lib: a lab home whose default state or data dir links outside the lab refuses
+ok - fm-gate-refuse-lib: the default Herdr session refuses inside a lab home
+ok - fm-gate-refuse-lib: only a Herdr lab session recorded for the home's lab authorizes
+ok - fm-gate-refuse-lib: lab A's home cannot target lab B's recorded Herdr session
+ok - fm-gate-refuse-lib: a lab task record pointing outside the lab refuses
+ok - fm-gate-refuse-lib: a lab home in the real secondmate registry refuses
+ok - fm-gate-refuse-lib: a lab home whose parent chain reaches a real home refuses
+ok - fm-spawn: refuses on marker and gate-worktree backstop; a normal crew spawn is unaffected
+ok - fm-spawn: a marked lab home with lab-contained tools authorizes a spawn inside the gate; outside state refuses
+ok - fm-spawn: a worktree-providing lab spawn may use the real treehouse pool
+ok - fm-send: refuses on marker and gate-worktree backstop; a normal steer uses the inbox
+ok - fm-send: a marked lab home with a lab-contained tmux authorizes a steer inside the gate; outside state refuses
+ok - fm-teardown: refuses on marker and gate-worktree backstop; a normal teardown is unaffected
+ok - fm-teardown: a marked lab home with lab-contained tools authorizes teardown inside the gate

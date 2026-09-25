@@ -1,0 +1,16 @@
+Named Herdr lab session: fm-lab-login-56300-24479
+codex: rc=0
+Response:
+LAB_OK
+opencode: rc=0
+Response:
+LAB_OK
+pi: rc=0
+Response:
+LAB_OK
+Real spawn record (before pane close):
+window=fm-lab-login-56300-24479:w2:p2
+worktree=/Users/kunchen/.treehouse/project-701e93/1/project
+harness=claude
+kind=ship
+Worker pane was closed; treehouse return executed (pool remains treehouse-owned).

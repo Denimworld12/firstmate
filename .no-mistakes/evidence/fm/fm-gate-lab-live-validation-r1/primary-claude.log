@@ -1,0 +1,18 @@
+primary session=fm-lab-primary-live-77669-23798 lab=/var/folders/5x/4nqprlbx0518k3ybcb1sz6gr0000gn/T//fm-lab-home-501/primary-live-gkGuUV
+workspace=w1
+pane=w1:p1
+CLAUDE PRIMARY OUTPUT:
+env -u NO_MISTAKES_GATE -u FM_TEST_SEAM FM_TEST_HARNESS=omp FM_HOME='/var/folders/5x/4nqprlbx0518k3ybcb1sz6gr0000gn/T//
+fm-lab-home-501/primary-live-gkGuUV' claude -p 'Run bin/fm-harness.sh own using Bash and quote its exact output. Do not
+ modify files.' --allowedTools 'Bash(*)'
+01M3AX1TJX6ESSN5R2G88FEAMB HEAD*?
+❯ env -u NO_MISTAKES_GATE -u FM_TEST_SEAM FM_TEST_HARNESS=omp FM_HOME='/var/folders/5x/4nqprlbx0518k3ybcb1sz6gr0000gn/T
+//fm-lab-home-501/primary-live-gkGuUV' claude -p 'Run bin/fm-harness.sh own using Bash and quote its exact output. Do n
+ot modify files.' --allowedTools 'Bash(*)'
+Captain, here is the exact output of `bin/fm-harness.sh own`:
+
+```
+claude
+```
+01M3AX1TJX6ESSN5R2G88FEAMB HEAD*? 8s
+❯

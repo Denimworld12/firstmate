@@ -1,0 +1,16 @@
+primary session=fm-lab-primary-live-63858-27685 lab=/var/folders/5x/4nqprlbx0518k3ybcb1sz6gr0000gn/T//fm-lab-home-501/primary-live-mdRV8d
+workspace=w1
+pane=w1:p1
+ONE-SHOT opencode tab=w1:t2 pane=w1:p2
+env -u NO_MISTAKES_GATE FM_HOME='/var/folders/5x/4nqprlbx0518k3ybcb1sz6gr0000gn/T//fm-lab-home-501/primary-live-mdRV8d'
+opencode run -m opencode/big-pickle 'Reply only: LAB-OPENCODE-OK'
+01M3AX1TJX6ESSN5R2G88FEAMB HEAD*?
+❯ env -u NO_MISTAKES_GATE FM_HOME='/var/folders/5x/4nqprlbx0518k3ybcb1sz6gr0000gn/T//fm-lab-home-501/primary-live-mdRV8d
+' opencode run -m opencode/big-pickle 'Reply only: LAB-OPENCODE-OK'
+
+> build · big-pickle
+
+LAB-OPENCODE-OK
+
+01M3AX1TJX6ESSN5R2G88FEAMB HEAD*? 7s
+❯

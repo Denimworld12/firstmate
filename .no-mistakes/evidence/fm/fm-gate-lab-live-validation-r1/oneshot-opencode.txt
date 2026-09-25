@@ -1,0 +1,9 @@
+01M3AX1TJX6ESSN5R2G88FEAMB HEAD
+❯ env -u NO_MISTAKES_GATE opencode run -m opencode/big-pickle "Reply only LAB_OK; do not use tools."
+
+> build · big-pickle
+
+LAB_OK
+
+01M3AX1TJX6ESSN5R2G88FEAMB HEAD 8s
+❯

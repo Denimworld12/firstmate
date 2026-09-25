@@ -1,0 +1,11 @@
+--- authorized lab reaches ordinary spawn validation ---
+error: task check has no brief at inaccessible data path /private/tmp/fm-lab-home-501/gate-check-UGgGYp/data/check/brief.md
+exit=1
+--- external effective state refused ---
+error: no-mistakes gate agent must not drive the fleet (NO_MISTAKES_GATE set)
+note: lab authorization failed - the state or data directory resolves outside the lab
+exit=3
+--- default backend refused ---
+error: no-mistakes gate agent must not drive the fleet (NO_MISTAKES_GATE set)
+note: lab authorization failed - backend 'tmux' is not isolated inside the lab
+exit=3

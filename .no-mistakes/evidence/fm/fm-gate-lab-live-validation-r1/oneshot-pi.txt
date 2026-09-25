@@ -1,0 +1,6 @@
+01M3AX1TJX6ESSN5R2G88FEAMB HEAD
+❯ env -u NO_MISTAKES_GATE pi --print --no-session --no-extensions --no-context-files "Reply only LAB_OK; do not use tool
+s."
+LAB_OK
+01M3AX1TJX6ESSN5R2G88FEAMB HEAD
+❯

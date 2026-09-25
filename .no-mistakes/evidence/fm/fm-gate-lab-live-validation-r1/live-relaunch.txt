@@ -1,0 +1,10 @@
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+●  WATCHER DOWN - SUPERVISION IS OFF
+●  1 task(s) in flight, but no watcher has a fresh beacon (last beat: never, grace 300s).
+●  Trust the emitted supervision protocol for this harness; do not use shell & for watcher repair.
+●  This is a supervision warning only; the guarded operation WILL still run.
+●  repair a missing or failed watcher cycle with the Pi tool fm_watch_arm_pi, or restart Pi with -e /Users/kunchen/.no-mistakes/worktrees/52b07e9083e7/01M3AX1TJX6ESSN5R2G88FEAMB/.pi/extensions/fm-primary-turnend-guard.ts -e /Users/kunchen/.no-mistakes/worktrees/52b07e9083e7/01M3AX1TJX6ESSN5R2G88FEAMB/.pi/extensions/fm-primary-pi-watch.ts if the extensions are not loaded.
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+warning: /var/folders/5x/4nqprlbx0518k3ybcb1sz6gr0000gn/T//fm-lab-home-501/livecheck-qLvBzW/data/liveworker/launch-brief.md records no ship branch; defaulting to legacy branch fm/liveworker
+warning: /var/folders/5x/4nqprlbx0518k3ybcb1sz6gr0000gn/T//fm-lab-home-501/livecheck-qLvBzW/data/liveworker/launch-brief.md records no delivery contract line (scaffolded before ship briefs recorded one); launching on the explicit --mode no-mistakes - confirm its definition of done matches
+relaunched liveworker harness=pi from=pi model=default effort=default backend=herdr endpoint=fm-lab-livecheck-25824-1043:w4:p2 worktree=/Users/kunchen/.treehouse/01M3AX1TJX6ESSN5R2G88FEAMB-8bf1b0/1/01M3AX1TJX6ESSN5R2G88FEAMB

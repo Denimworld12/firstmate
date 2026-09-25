@@ -1,0 +1,3 @@
+codex w2:p2
+opencode w2:p3
+pi w2:p4

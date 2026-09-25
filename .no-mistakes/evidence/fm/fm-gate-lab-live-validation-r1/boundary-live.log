@@ -1,0 +1,12 @@
+A=/var/folders/5x/4nqprlbx0518k3ybcb1sz6gr0000gn/T//fm-lab-home-501/boundary-a-gGIEKt session=fm-lab-boundary-a-37912-18389
+B=/var/folders/5x/4nqprlbx0518k3ybcb1sz6gr0000gn/T//fm-lab-home-501/boundary-b-CNa1vD session=fm-lab-boundary-b-37943-31280
+FM_HOME=A HERDR_SESSION=fm-lab-boundary-b-37943-31280:
+error: no-mistakes gate agent must not drive the fleet (NO_MISTAKES_GATE set)
+note: lab authorization failed - backend 'herdr' is not isolated inside the lab
+status=3
+FM_HOME=A HERDR_SESSION=fm-lab-boundary-a-37912-18389:
+error: ship spawns require --mode <no-mistakes|direct-PR|local-only>; resolve it at intake from the captain's instruction and the project's registered posture in data/projects.md
+status=1
+FM_HOME=A default state symlink -> worktree:
+error: spawn refused: state directory is not a real directory at /var/folders/5x/4nqprlbx0518k3ybcb1sz6gr0000gn/T//fm-lab-home-501/boundary-a-gGIEKt/state
+status=1

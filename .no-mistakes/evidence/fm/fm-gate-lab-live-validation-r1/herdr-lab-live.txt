@@ -1,0 +1,17 @@
+LAB=/var/folders/5x/4nqprlbx0518k3ybcb1sz6gr0000gn/T//fm-lab-home-501/gate-live-VBx3LR SESSION=fm-lab-gate-live-15891-5454
+=== live named server ===
+{
+  "running": true,
+  "session": "fm-lab-gate-live-15891-5454"
+}
+=== gate authorization in real lab ===
+authorized
+=== unrecorded session refused (before any lifecycle access) ===
+error: no-mistakes gate agent must not drive the fleet (NO_MISTAKES_GATE set)
+note: lab authorization failed - backend 'herdr' is not isolated inside the lab
+refusal exit=3
+=== gate spawn reaches missing-brief validation with real Herdr and no fake treehouse ===
+error: task live-no-brief has no brief at inaccessible data path /var/folders/5x/4nqprlbx0518k3ybcb1sz6gr0000gn/T//fm-lab-home-501/gate-live-VBx3LR/data/live-no-brief/brief.md
+spawn exit=1
+=== teardown verification ===
+[]

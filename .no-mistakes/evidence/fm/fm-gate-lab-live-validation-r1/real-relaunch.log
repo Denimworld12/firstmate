@@ -1,0 +1,39 @@
+session=fm-lab-relaunch-live-15889-30261 home=/var/folders/5x/4nqprlbx0518k3ybcb1sz6gr0000gn/T//fm-lab-home-501/relaunch-live-U2sSNZ
+warning: /var/folders/5x/4nqprlbx0518k3ybcb1sz6gr0000gn/T//fm-lab-home-501/relaunch-live-U2sSNZ/data/gate-live-relaunch/launch-brief.md records no ship branch; defaulting to legacy branch fm/gate-live-relaunch
+warning: /var/folders/5x/4nqprlbx0518k3ybcb1sz6gr0000gn/T//fm-lab-home-501/relaunch-live-U2sSNZ/data/gate-live-relaunch/launch-brief.md records no delivery contract line (scaffolded before ship briefs recorded one); launching on the explicit --mode local-only - confirm its definition of done matches
+notice: gate-live-relaunch ships mode=local-only while the standing posture for .live-relaunch-project is no-mistakes - less rigor than the captain's standing posture; proceed only on a current explicit captain instruction or an intake judgment you can state
+warning: herdr presentation parent is absent or ambiguous; using the ordinary flat layout without projection
+spawned gate-live-relaunch harness=claude kind=ship mode=local-only yolo=off window=fm-lab-relaunch-live-15889-30261:w1:p2 worktree=/Users/kunchen/.treehouse/.live-relaunch-project-0998b2/1/.live-relaunch-project
+
+BEFORE RECORD:
+window=fm-lab-relaunch-live-15889-30261:w1:p2
+worktree=/Users/kunchen/.treehouse/.live-relaunch-project-0998b2/1/.live-relaunch-project
+project=/Users/kunchen/.no-mistakes/worktrees/52b07e9083e7/01M3AX1TJX6ESSN5R2G88FEAMB/tests/.live-relaunch-project
+kind=ship
+backend=herdr
+pane=w1:p2
+{"id":"cli:pane:close","result":{"type":"ok"}}
+
+AFTER PANE CLOSE, BEFORE RELAUNCH:
+window=fm-lab-relaunch-live-15889-30261:w1:p2
+worktree=/Users/kunchen/.treehouse/.live-relaunch-project-0998b2/1/.live-relaunch-project
+project=/Users/kunchen/.no-mistakes/worktrees/52b07e9083e7/01M3AX1TJX6ESSN5R2G88FEAMB/tests/.live-relaunch-project
+kind=ship
+backend=herdr
+warning: /var/folders/5x/4nqprlbx0518k3ybcb1sz6gr0000gn/T//fm-lab-home-501/relaunch-live-U2sSNZ/data/gate-live-relaunch/launch-brief.md records no ship branch; defaulting to legacy branch fm/gate-live-relaunch
+warning: /var/folders/5x/4nqprlbx0518k3ybcb1sz6gr0000gn/T//fm-lab-home-501/relaunch-live-U2sSNZ/data/gate-live-relaunch/launch-brief.md records no delivery contract line (scaffolded before ship briefs recorded one); launching on the explicit --mode local-only - confirm its definition of done matches
+notice: gate-live-relaunch ships mode=local-only while the standing posture for .live-relaunch-project is no-mistakes - less rigor than the captain's standing posture; proceed only on a current explicit captain instruction or an intake judgment you can state
+relaunched gate-live-relaunch harness=claude from=claude model=default effort=default backend=herdr endpoint=fm-lab-relaunch-live-15889-30261:w2:p2 worktree=/Users/kunchen/.treehouse/.live-relaunch-project-0998b2/1/.live-relaunch-project
+
+RELAUNCH EXIT=0 AFTER RECORD:
+window=fm-lab-relaunch-live-15889-30261:w2:p2
+worktree=/Users/kunchen/.treehouse/.live-relaunch-project-0998b2/1/.live-relaunch-project
+project=/Users/kunchen/.no-mistakes/worktrees/52b07e9083e7/01M3AX1TJX6ESSN5R2G88FEAMB/tests/.live-relaunch-project
+kind=ship
+backend=herdr
+worktree-exists=yes
+A new version of treehouse is available: v2.0.1 → v2.3.0
+Run "treehouse update" to update
+
+🌳 Terminated lingering processes: zsh (27799), 2.1.282 (33396), caffeinate (34917)
+🌳 Worktree returned to pool.

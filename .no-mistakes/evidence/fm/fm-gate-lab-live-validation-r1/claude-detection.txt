@@ -1,0 +1,40 @@
+
+ ▐▛███▛█   Claude Code v2.1.282
+▝▜██████▀  Opus 4.8 with high effort · Claude Max
+ ▝▝   ▝▝   ~/.no-mistakes/worktrees/52b07e9083e7/01M3AX1TJX6ESSN5R2G88FEAMB
+
+
+❯ Run exactly this read-only shell command and report its stdout verbatim, without changing any files: env -u
+  FM_TEST_SEAM bash -c '. bin/fm-afk-launch.sh; fm_afk_launch_primary_harness'. Then stop.
+
+  Ran 1 shell command
+
+⏺ Captain, here is the command's stdout verbatim:
+
+  claude
+
+✻ Worked for 22s · done 6:49 PM
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯ Now the same for the away-supervisor harness
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Opus 4.8 ctx window                 73.7k / 1.0M
+  ⏵⏵ auto mode on (shift+tab to cycle) · ← for agents

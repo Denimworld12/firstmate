@@ -1,0 +1,40 @@
+
+ ▐▛███▛█   Claude Code v2.1.282
+▝▜██████▀  Opus 4.8 with high effort · Claude Max
+ ▝▝   ▝▝   ~/.no-mistakes/worktrees/52b07e9083e7/01M3AX1TJX6ESSN5R2G88FEAMB
+
+
+!  env | grep -E "^(FM_HOME|FM_TEST_HARNESS|FM_TEST_SEAM)="; bin/fm-harness.sh detect_own
+  ⎿  FM_HOME=/private/tmp/fm-lab-home-501/primary-804AIz
+     FM_TEST_HARNESS=cursor
+     claude
+
+⏺ I'm at session start and the firstmate digest isn't present yet (only the tool-availability hooks ran). Let me run the
+  session-start command once as the contract requires.
+
+  Running 1 shell command…
+  ⎿  $ bin/fm-session-start.sh 2>&1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+✻ Tinkering… (16s · ↓ 765 tokens)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯ 
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Opus 4.8 ctx window   ▉               60.1k / 1.0M
+  ⏵⏵ auto mode on (shift+tab to cycle) · ← for agents

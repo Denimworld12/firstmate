@@ -1,0 +1,2 @@
+error: no-mistakes gate agent must not drive the fleet (NO_MISTAKES_GATE set)
+note: lab authorization failed - FM_HOME is not a marked disposable lab home under the temp root

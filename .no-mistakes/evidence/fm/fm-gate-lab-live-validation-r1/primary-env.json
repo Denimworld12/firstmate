@@ -1,0 +1,6 @@
+01M3AX1TJX6ESSN5R2G88FEAMB HEAD
+❯ printf "gate=%s seam=%s harness=%s home=%s\n" "${NO_MISTAKES_GATE-unset}" "${FM_TEST_SEAM-unset}" "$FM_TEST_HARNESS"
+"$FM_HOME"
+gate=1 seam=unset harness=omp home=/var/folders/5x/4nqprlbx0518k3ybcb1sz6gr0000gn/T//fm-lab-home-501/livecheck-qLvBzW
+01M3AX1TJX6ESSN5R2G88FEAMB HEAD
+❯
