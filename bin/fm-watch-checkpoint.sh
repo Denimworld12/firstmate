@@ -5,8 +5,9 @@
 # SUPERVISION HOST. A home opted in with config/supervision-host
 # (docs/configuration.md "Supervision host" owns the opt-in) runs
 # bin/fm-supervision-host.sh in the watcher's place for the checkpoint's bound,
-# as the host's park boundary; the host takes away-posture wakes itself and
-# returns only when main is needed (its header owns the output read here).
+# as the host's park boundary; the host takes eligible attended wakes and all
+# away wakes itself, returning only when main is needed (its header owns the
+# output read here).
 # While the away-posture record state/.afk-contract exists, the bound is
 # raised to FM_CODEX_WATCH_CHECKPOINT_AWAY (default 3600) when that is longer,
 # so a parked main is not woken every few minutes; an engine turn that starts
