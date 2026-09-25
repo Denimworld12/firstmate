@@ -1,0 +1,13 @@
+=== no-mistakes ship brief: generated project-memory section ===
+# Project memory
+A project's `AGENTS.md` or `CLAUDE.md` is loaded into every agent session in that project, so edit it only to correct information that is factually wrong - including information your own change made wrong - and never to add knowledge because it is missing.
+A correction edits only the wrong text: do not run `/Users/kunchen/.no-mistakes/worktrees/52b07e9083e7/01M3BF539RWAJPF1QWZEQFKYR4/bin/fm-ensure-agents-md.sh`, create either file, or add sections, headings, or pointers alongside it.
+=== direct-PR ship brief: generated project-memory section ===
+# Project memory
+A project's `AGENTS.md` or `CLAUDE.md` is loaded into every agent session in that project, so edit it only to correct information that is factually wrong - including information your own change made wrong - and never to add knowledge because it is missing.
+A correction edits only the wrong text: do not run `/Users/kunchen/.no-mistakes/worktrees/52b07e9083e7/01M3BF539RWAJPF1QWZEQFKYR4/bin/fm-ensure-agents-md.sh`, create either file, or add sections, headings, or pointers alongside it.
+=== local-only ship brief: generated project-memory section ===
+# Project memory
+A project's `AGENTS.md` or `CLAUDE.md` is loaded into every agent session in that project, so edit it only to correct information that is factually wrong - including information your own change made wrong - and never to add knowledge because it is missing.
+A correction edits only the wrong text: do not run `/Users/kunchen/.no-mistakes/worktrees/52b07e9083e7/01M3BF539RWAJPF1QWZEQFKYR4/bin/fm-ensure-agents-md.sh`, create either file, or add sections, headings, or pointers alongside it.
+Scout brief has no ship project-memory section.
