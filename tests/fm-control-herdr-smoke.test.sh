@@ -46,6 +46,8 @@ fm_herdr_lab_prepare "$SESSION" || fail "could not prepare isolated Herdr lab se
 SCRATCH=$(mktemp -d "${TMPDIR:-/tmp}/fm-control-herdr.XXXXXX")
 SCRATCH=$(cd "$SCRATCH" && pwd)
 fm_test_lab_adopt "$SCRATCH"
+"$ROOT/bin/fm-lab-home.sh" record-herdr-session "$SCRATCH" "$SESSION" \
+  || fail "could not record the Herdr lab session in the lab binding"
 HOME_DIR="$SCRATCH/home"
 mkdir -p "$HOME_DIR/state" "$HOME_DIR/data/hsmoke"
 cat > "$HOME_DIR/data/hsmoke/brief.md" <<'EOF'

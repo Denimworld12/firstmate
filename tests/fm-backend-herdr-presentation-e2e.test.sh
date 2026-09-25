@@ -279,6 +279,8 @@ herdr_forget_inherited_pane
 HERDR_LAB_SESSION=$(PATH="$HERDR_ORIGINAL_PATH" \
   "$HERDR_LAB_HELPER" name fm-herdr-presentation-projection)
 export HERDR_SESSION="$HERDR_LAB_SESSION" HERDR_LAB_SESSION
+"$ROOT/bin/fm-lab-home.sh" record-herdr-session "$TMP_ROOT" "$HERDR_LAB_SESSION" \
+  || fail "could not record the Herdr lab session in the lab binding"
 LAB_READY=0
 RECORDED_WORKTREES=""
 LOCK_CONTENTION_OWNER_PID=

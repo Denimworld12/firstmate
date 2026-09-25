@@ -69,6 +69,11 @@ TMP_ROOT=$(mktemp -d "$(cd "${TMPDIR:-/tmp}" && pwd -P)/fm-herdr-e2e.XXXXXX")
 fm_test_lab_adopt "$TMP_ROOT"
 SESSION="fm-lab-herdr-e2e-$$"
 export HERDR_SESSION="$SESSION"
+"$ROOT/bin/fm-lab-home.sh" record-herdr-session "$TMP_ROOT" "$SESSION" || {
+  rm -rf "$TMP_ROOT"
+  printf 'not ok - could not record the Herdr lab session in the lab binding\n' >&2
+  exit 1
+}
 WT1=; WT2=
 cleanup_all() {
   [ -n "$WT1" ] && command -v treehouse >/dev/null 2>&1 && treehouse return --force "$WT1" >/dev/null 2>&1

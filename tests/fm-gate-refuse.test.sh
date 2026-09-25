@@ -17,7 +17,8 @@
 # Exactly one path survives a gate signal: the structural lab authorization.
 # FM_HOME must live inside a marked disposable lab dir (bin/fm-lab-home.sh
 # create/adopt) and the backend target must be the lab's own isolation
-# (fm-lab-* Herdr session, private tmux socket dir, or a lab-local tool).
+# (an fm-lab-* Herdr session recorded for this lab, private tmux socket dir,
+# or a lab-local tool).
 # A forged marker on a real or unadopted dir still refuses - the marker
 # token binds to the exact canonical dir it was minted for. Worktree and
 # spawning-project locations are deliberately NOT pinned inside the lab: a
@@ -360,13 +361,56 @@ test_lab_herdr_default_session_refuses() {
 }
 
 test_lab_herdr_named_session_authorizes() {
-  local home out rc
+  local home session out rc
   home="$LAB/herdr-ok"; mkdir -p "$home/state" "$home/data" "$home/config"
+  session="fm-lab-gate-ok-$$-$RANDOM"
   out=$(run_lib_call "$NORMAL_CWD" "$home" -u TMUX_TMPDIR -u TMUX \
-      "FM_BACKEND=herdr" "HERDR_SESSION=fm-lab-gate-test" "PATH=/usr/bin:/bin" \
+      "FM_BACKEND=herdr" "HERDR_SESSION=$session" "PATH=/usr/bin:/bin" \
       "FM_ROOT=$WORLD/auth-root"); rc=$?
-  expect_code 0 "$rc" "helper: an fm-lab-* Herdr session must authorize inside a lab"
-  pass "fm-gate-refuse-lib: a named fm-lab-* Herdr session authorizes inside a lab home"
+  expect_code 3 "$rc" "helper: an fm-lab-* session the lab never recorded must refuse"
+  "$LAB_HELPER" record-herdr-session "$LAB" "$session" \
+    || fail "could not record the Herdr lab session"
+  out=$(run_lib_call "$NORMAL_CWD" "$home" -u TMUX_TMPDIR -u TMUX \
+      "FM_BACKEND=herdr" "HERDR_SESSION=$session" "PATH=/usr/bin:/bin" \
+      "FM_ROOT=$WORLD/auth-root"); rc=$?
+  expect_code 0 "$rc" "helper: an fm-lab-* session recorded for the lab must authorize"
+  pass "fm-gate-refuse-lib: only a Herdr lab session recorded for the home's lab authorizes"
+}
+
+test_lab_herdr_other_lab_session_refuses() {
+  local home session fakebin out rc
+  # Lab B provisioned and recorded this session; lab A's home must not reach
+  # it through the environment, a task record, or a resolved send target, and
+  # lab A cannot claim it by recording it too.
+  home="$LAB/herdr-cross"; mkdir -p "$home/state" "$home/data" "$home/config"
+  session="fm-lab-gate-other-$$-$RANDOM"
+  "$LAB_HELPER" record-herdr-session "$OTHER_LAB" "$session" \
+    || fail "could not record lab B's Herdr session"
+  if "$LAB_HELPER" record-herdr-session "$LAB" "$session" 2>/dev/null; then
+    fail "lab A recorded a Herdr session lab B already owns"
+  fi
+  out=$(run_lib_call "$NORMAL_CWD" "$home" -u TMUX_TMPDIR -u TMUX \
+      "FM_BACKEND=herdr" "HERDR_SESSION=$session" "PATH=/usr/bin:/bin" \
+      "FM_ROOT=$WORLD/auth-root"); rc=$?
+  expect_code 3 "$rc" "helper: lab B's recorded session must refuse for lab A's home"
+  assert_contains "$out" "is not isolated inside the lab" "helper: cross-lab session refusal must name the backend check"
+
+  fakebin=$(make_lab_fakebin "$LAB/herdr-cross-fake")
+  fm_write_meta "$home/state/cross.meta" "window=$session:p1" "backend=herdr" \
+    "herdr_session=$session" "kind=ship"
+  out=$(run_lib_call "$NORMAL_CWD" "$home" "PATH=$fakebin:/usr/bin:/bin" "FM_ROOT=$WORLD/auth-root"); rc=$?
+  expect_code 3 "$rc" "helper: a task record on lab B's session must refuse for lab A's home"
+  assert_contains "$out" "a task record points outside the lab" "helper: cross-lab record refusal must name the meta check"
+  rm -f "$home/state/cross.meta"
+
+  # shellcheck disable=SC2016 # The inner bash, not this shell, expands $1-$3.
+  out=$(cd "$NORMAL_CWD" && env PATH="$fakebin:/usr/bin:/bin" FM_HOME="$home" FM_ROOT="$WORLD/auth-root" \
+      NO_MISTAKES_GATE=1 bash -c '. "$1"; fm_refuse_if_gate_agent; fm_gate_lab_assert_target herdr "$2:p1"; echo reached' \
+      _ "$GATE_LIB" "$session" 2>&1); rc=$?
+  expect_code 3 "$rc" "helper: a send target on lab B's session must refuse for lab A's home"
+  assert_contains "$out" "is not a Herdr session recorded for this lab" "helper: cross-lab target refusal must name the session check"
+  assert_not_contains "$out" "reached" "helper: a refused cross-lab target must stop the call"
+  pass "fm-gate-refuse-lib: lab A's home cannot target lab B's recorded Herdr session"
 }
 
 test_lab_meta_outside_path_refuses() {
@@ -739,6 +783,7 @@ test_lab_symlinked_backend_escape_refuses
 test_lab_default_state_data_symlink_refuses
 test_lab_herdr_default_session_refuses
 test_lab_herdr_named_session_authorizes
+test_lab_herdr_other_lab_session_refuses
 test_lab_meta_outside_path_refuses
 test_lab_registered_in_real_registry_refuses
 test_lab_parent_chain_escape_refuses

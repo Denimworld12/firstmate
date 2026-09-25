@@ -12,6 +12,8 @@
 #   - The helper's state dir records `bindings/<token>` -> the lab dir's
 #     canonical path, so a marker copied onto another directory verifies
 #     nothing (the token resolves to the dir it was minted for or to nothing).
+#     The same record lists the Herdr lab sessions the lab provisioned
+#     (`herdr_session=` lines), so a session binds to exactly one lab.
 #   - The lab dir itself must canonically resolve under ${TMPDIR:-/tmp}, the
 #     disposable temp root. A real home (~/fm-homes/*) can never live there,
 #     so the marker can never "upgrade" a real home, and a hand-forged
@@ -22,13 +24,17 @@
 #   bin/fm-lab-home.sh adopt <dir>        mark an existing dir under ${TMPDIR:-/tmp}
 #   bin/fm-lab-home.sh verify <fm_home>   print the marked lab dir <fm_home> lives in
 #   bin/fm-lab-home.sh teardown <dir>     remove a verified lab dir and its binding
+#   bin/fm-lab-home.sh record-herdr-session <dir> <fm-lab-session>
+#                                         bind a provisioned Herdr lab session to
+#                                         the lab <dir> lives in
 #
 # A lab dir is itself a usable disposable FM_HOME (state/, data/, config/,
 # projects/ are created). For multi-home scenarios create additional homes
 # inside the same lab dir - every FM_HOME and effective state and data dir a
 # lifecycle call uses must resolve inside the one marked lab dir, symlinks
 # followed, and the backend target must be the lab's own isolated session
-# (Herdr fm-lab-*) or private tmux socket (TMUX_TMPDIR inside this lab). A
+# (a Herdr fm-lab-* session recorded with record-herdr-session) or private
+# tmux socket (TMUX_TMPDIR inside this lab). A
 # lab-launched primary also needs the gate marker scrubbed from its
 # environment (env -u NO_MISTAKES_GATE) - it is a test fixture firstmate, not
 # a gate agent.
@@ -46,8 +52,9 @@
 # (`TMUX_TMPDIR="$LAB/tmux" tmux -L fm-lab send-keys|capture-pane|kill-server`);
 # the primary's own firstmate calls inherit $TMUX naming the same socket. A
 # Herdr primary uses a named fm-lab-* session via bin/fm-herdr-lab.sh
-# instead. An absent CLI or an unavailable login is reported untested, never
-# faked.
+# instead, recorded right after provisioning with
+# `bin/fm-lab-home.sh record-herdr-session "$LAB" <session>`. An absent
+# CLI or an unavailable login is reported untested, never faked.
 
 fm_lab_home_error() { echo "fm-lab-home: $*" >&2; }
 
@@ -177,6 +184,58 @@ fm_lab_home_verify() { # <fm_home>
   fm_lab_home_walk "$canon_home"
 }
 
+# fm_lab_home_binding_file <lab-dir>: the binding record for a verified lab
+# dir. Its first line binds the marker token to the dir; each later
+# `herdr_session=` line names a Herdr lab session this lab provisioned.
+fm_lab_home_binding_file() { # <lab-dir>
+  local token
+  token=$(sed -n 's/^token=\([0-9a-f][0-9a-f]*\)$/\1/p' "$1/.fm-lab-home" 2>/dev/null | head -1)
+  [ -n "$token" ] || return 1
+  printf '%s/bindings/%s\n' "$(fm_lab_home_state_dir)" "$token"
+}
+
+# fm_lab_home_has_herdr_session <lab-dir> <session>: succeed only when the
+# lab's own binding record names <session>. A missing or unreadable record
+# fails closed.
+fm_lab_home_has_herdr_session() { # <lab-dir> <session>
+  local binding
+  [ -n "${2:-}" ] || return 1
+  binding=$(fm_lab_home_binding_file "$1") || return 1
+  [ -f "$binding" ] && [ ! -L "$binding" ] && [ -r "$binding" ] || return 1
+  grep -Fqx -- "herdr_session=$2" "$binding"
+}
+
+# fm_lab_home_record_herdr_session <path> <session>: record a provisioned
+# fm-lab-* Herdr session in the binding record of the lab <path> lives in. A
+# session another live lab already recorded is refused, so each name binds
+# to exactly one lab.
+fm_lab_home_record_herdr_session() { # <path> <session>
+  local session=$2 lab binding other bound
+  [[ "$session" =~ ^fm-lab-[a-zA-Z0-9][a-zA-Z0-9_-]*$ ]] || {
+    fm_lab_home_error "a lab Herdr session must be a named fm-lab-* session: $session"
+    return 1
+  }
+  lab=$(fm_lab_home_verify "$1") || {
+    fm_lab_home_error "not inside a marked lab dir: $1"
+    return 1
+  }
+  binding=$(fm_lab_home_binding_file "$lab") || return 1
+  [ -f "$binding" ] && [ ! -L "$binding" ] || return 1
+  for other in "$(dirname -- "$binding")"/*; do
+    [ "$other" != "$binding" ] || continue
+    if [ ! -f "$other" ] || ! grep -Fqx -- "herdr_session=$session" "$other"; then
+      continue
+    fi
+    bound=$(head -1 "$other")
+    if [ "$(fm_lab_home_verify "$bound" 2>/dev/null)" = "$bound" ]; then
+      fm_lab_home_error "Herdr session $session is already recorded by another lab"
+      return 1
+    fi
+  done
+  fm_lab_home_has_herdr_session "$lab" "$session" && return 0
+  printf 'herdr_session=%s\n' "$session" >> "$binding"
+}
+
 fm_lab_home_create() { # <label>
   local label=$1 state_dir lab
   label=$(printf '%s' "$label" | tr -cd 'a-zA-Z0-9_-' | sed 's/^[^a-zA-Z0-9]*//; s/-*$//')
@@ -226,7 +285,7 @@ fm_lab_home_teardown() { # <dir>
 }
 
 fm_lab_home_usage() {
-  sed -n '2,34p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,40p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
 }
 
 fm_lab_home_main() {
@@ -247,6 +306,10 @@ fm_lab_home_main() {
     teardown)
       [ "$#" -eq 2 ] || { fm_lab_home_usage >&2; return 2; }
       fm_lab_home_teardown "$2"
+      ;;
+    record-herdr-session)
+      [ "$#" -eq 3 ] || { fm_lab_home_usage >&2; return 2; }
+      fm_lab_home_record_herdr_session "$2" "$3"
       ;;
     -h | --help | help)
       fm_lab_home_usage

@@ -55,6 +55,11 @@ HERDR_LAB_SESSION=$("$HERDR_LAB_HELPER" name fm-herdr-launcher-ws) || {
   exit 1
 }
 export HERDR_SESSION="$HERDR_LAB_SESSION"
+"$ROOT/bin/fm-lab-home.sh" record-herdr-session "$TMP_ROOT" "$HERDR_LAB_SESSION" || {
+  rm -rf "$TMP_ROOT"
+  printf 'not ok - could not record the Herdr lab session in the lab binding\n' >&2
+  exit 1
+}
 
 WORKTREES=()
 CLEANED=0

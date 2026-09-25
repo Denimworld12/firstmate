@@ -70,6 +70,10 @@ HERDR_LAB_SESSION=$("$HERDR_LAB_HELPER" name fm-autodetect-smoke-concurrency-h3)
   fail "could not generate an isolated Herdr lab session name"
 }
 export HERDR_SESSION="$HERDR_LAB_SESSION"
+"$ROOT/bin/fm-lab-home.sh" record-herdr-session "$TMP_ROOT" "$HERDR_LAB_SESSION" || {
+  rm -rf "$TMP_ROOT"
+  fail "could not record the Herdr lab session in the lab binding"
+}
 ID="autodetectsmoke1"
 WT=
 cleanup_all() {

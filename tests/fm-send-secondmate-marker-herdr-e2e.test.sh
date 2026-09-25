@@ -30,6 +30,8 @@ LAB_HELPER=${HERDR_LAB_HELPER:-$ROOT/bin/fm-herdr-lab.sh}
 SESSION=$("$LAB_HELPER" name fm-send-secondmate-marker-v7)
 TMP_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/fm-send-marker-herdr-e2e.XXXXXX")
 fm_test_lab_adopt "$TMP_ROOT"
+"$ROOT/bin/fm-lab-home.sh" record-herdr-session "$TMP_ROOT" "$SESSION" \
+  || fail "could not record the Herdr lab session in the lab binding"
 SENDER_HOME="$TMP_ROOT/sender-home"
 SECOND_HOME="$TMP_ROOT/secondmate-home"
 CAPTURE="$TMP_ROOT/pi-before-agent.jsonl"
@@ -175,7 +177,11 @@ rc=$?
 INBOX_DIR="$SENDER_HOME/state/$ID.inbox"
 REC=''
 for _ in $(seq 1 240); do
-  REC=$(ls "$INBOX_DIR"/*.msg "$INBOX_DIR"/handled/*.msg 2>/dev/null | head -1)
+  for candidate in "$INBOX_DIR"/*.msg "$INBOX_DIR"/handled/*.msg; do
+    [ -f "$candidate" ] || continue
+    REC=$candidate
+    break
+  done
   [ -n "$REC" ] && break
   sleep 0.25
 done

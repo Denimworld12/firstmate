@@ -65,8 +65,11 @@
 #   5. The backend the call could reach is the lab's own isolated target -
 #      a socket dir or tool must resolve inside THIS lab dir, never another
 #      marked lab:
-#      - herdr: HERDR_SESSION names an fm-lab-* session, or `herdr` resolves
-#        inside the lab (a fake). The default session is never authorized.
+#      - herdr: HERDR_SESSION names an fm-lab-* session recorded in THIS
+#        lab's binding record (bin/fm-lab-home.sh record-herdr-session), or
+#        `herdr` resolves inside the lab (a fake). The default session and
+#        another lab's session are never authorized; a missing or unreadable
+#        record refuses.
 #      - tmux: TMUX_TMPDIR resolves inside the lab (private socket dir), or
 #        `tmux` resolves inside the lab. An ambient $TMUX naming a live socket
 #        outside the lab refuses, since pane targeting would hit a real
@@ -202,12 +205,16 @@ fm_gate_lab_tmux_ok() {
   fm_gate_lab_bin_inside tmux
 }
 
-# herdr containment: a named non-default fm-lab-* session, or a lab-local
+# A Herdr session this lab recorded when it provisioned it. Another lab's
+# session, the default session, or a missing record never matches.
+fm_gate_lab_herdr_session_ok() { # <session>
+  fm_lab_home_has_herdr_session "$FM_GATE_LAB_DIR" "$1"
+}
+
+# herdr containment: a Herdr session recorded for this lab, or a lab-local
 # `herdr` binary. The default session is never authorized.
 fm_gate_lab_herdr_ok() {
-  case "${HERDR_SESSION:-}" in
-    fm-lab-*) return 0 ;;
-  esac
+  fm_gate_lab_herdr_session_ok "${HERDR_SESSION:-}" && return 0
   fm_gate_lab_bin_inside herdr
 }
 
@@ -370,10 +377,8 @@ fm_gate_lab_metas_ok() { # <home>
     esac
     if [ "$backend" = herdr ]; then
       session=$(sed -n 's/^herdr_session=//p' "$meta" | tail -1)
-      case "$session" in
-        fm-lab-*) ;;
-        *) fm_gate_lab_bin_inside herdr || return 1 ;;
-      esac
+      fm_gate_lab_herdr_session_ok "$session" \
+        || fm_gate_lab_bin_inside herdr || return 1
     else
       fm_gate_lab_backend_ok "$backend" || return 1
     fi
@@ -499,13 +504,9 @@ fm_gate_lab_assert_target() { # <backend> <resolved-target>
         || fm_gate_lab_refuse "remote target '$2' needs a lab-local ssh transport"
       ;;
     herdr)
-      case "$2" in
-        fm-lab-*:*) ;;
-        *)
-          fm_gate_lab_bin_inside herdr \
-            || fm_gate_lab_refuse "herdr target '$2' is not an fm-lab-* session"
-          ;;
-      esac
+      fm_gate_lab_herdr_session_ok "${2%%:*}" \
+        || fm_gate_lab_bin_inside herdr \
+        || fm_gate_lab_refuse "herdr target '$2' is not a Herdr session recorded for this lab"
       ;;
     tmux | zellij | orca | cmux)
       fm_gate_lab_backend_ok "$1" \
