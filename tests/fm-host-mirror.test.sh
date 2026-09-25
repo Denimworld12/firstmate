@@ -377,6 +377,34 @@ test_feed_resumes_reanchors_and_is_bounded() {
   pass "mirror: the feed resumes from its committed cursor, re-anchors on a new conversation or session, and is bounded"
 }
 
+test_recycled_lock_pid_is_a_new_main_session() {
+  local home
+  home=$(make_home recycled)
+  as_session "$home" "$SAY"'
+    fake_proc() {  # <root> <starttime>: this pid with that process start
+      mkdir -p "$1/$$"
+      printf "%s (claude) S 1 1 1 0 -1 0 0 0 0 0 0 0 0 0 20 0 1 0 %s 0 0\n" "$$" "$2" > "$1/$$/stat"
+      printf "claude\0" > "$1/$$/cmdline"
+    }
+    fake_proc "$FM_HOME/proc.first" 1000
+    fake_proc "$FM_HOME/proc.recycled" 2000
+    export FM_PROC_ROOT_OVERRIDE="$FM_HOME/proc.first"
+    say captain "asked in the first session"
+    "$MIRROR" feed s1 new > "$FM_HOME/feed.first" && "$MIRROR" commit
+    export FM_PROC_ROOT_OVERRIDE="$FM_HOME/proc.recycled"
+    "$MIRROR" feed s2 new > "$FM_HOME/feed.recycled"
+    say captain "asked in the recycled session"
+    "$MIRROR" feed s3 new > "$FM_HOME/feed.second"
+  ' || fail "the session failed"
+  assert_equals "[captain] asked in the first session" "$(cat "$home/feed.first")" \
+    "one lock holder must keep one key across its writes and feeds"
+  assert_equals "" "$(cat "$home/feed.recycled")" \
+    "a later lock holder given the same pid must not be fed the earlier holder's dialog"
+  assert_equals "[captain] asked in the recycled session" "$(cat "$home/feed.second")" \
+    "a later lock holder given the same pid must be fed only its own dialog"
+  pass "mirror: a later lock holder with a recycled pid is a new main session"
+}
+
 test_recreated_mirror_continues_past_both_cursors() {
   local home
   home=$(make_home recreate)
@@ -419,5 +447,6 @@ test_mirror_is_owner_only_under_an_open_umask
 test_codex_message_refused_by_the_mirror_is_retried
 test_codex_record_still_being_written_is_read_once_complete
 test_feed_resumes_reanchors_and_is_bounded
+test_recycled_lock_pid_is_a_new_main_session
 test_recreated_mirror_continues_past_both_cursors
 test_verified_writers

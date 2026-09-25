@@ -103,10 +103,6 @@ EOF
   return 0
 }
 
-# fm_supervision_host_main_key <state-dir>: print the key of the current main
-# session, which changes at every main session start: the session-lock holder
-# and a checksum of its session sidecar. The host keys its engine conversation
-# to it, and the dialog mirror (bin/fm-host-mirror.sh) keys each entry to it.
 # fm_supervision_host_attended_ready <config-dir> <primary-harness>
 # 0 when the attended host's configured engine, executable, node, jq, turn
 # bound (perl, timeout, or gtimeout), and primary's mirror writer are ready;
@@ -133,8 +129,23 @@ fm_supervision_host_attended_ready() {
   [ -z "$FM_SUPERVISION_HOST_UNREADY" ]
 }
 
+# fm_supervision_host_main_key <state-dir>: print the key of the current main
+# session, which changes at every main session start: the session-lock holder,
+# a checksum of its process identity (bin/fm-wake-lib.sh fm_pid_identity), and
+# a checksum of its session sidecar, so a later session given a recycled lock
+# pid never shares it. The host keys its engine conversation and broken-session
+# latch to it, and the dialog mirror (bin/fm-host-mirror.sh) keys each entry and
+# feed to it. When the holder's identity cannot be read, the key is one no other
+# call prints, so nothing kept under an earlier key is reused.
 fm_supervision_host_main_key() {
-  printf '%s:%s\n' "$(sed -n '1p' "$1/.lock" 2>/dev/null)" \
+  local pid identity
+  pid=$(sed -n '1p' "$1/.lock" 2>/dev/null)
+  if identity=$(fm_pid_identity "$pid" 2>/dev/null) && [ -n "$identity" ]; then
+    identity=$(printf '%s\n' "$identity" | cksum | awk '{ print $1 }')
+  else
+    identity="unread-$$-$RANDOM$RANDOM-$(date +%s)"
+  fi
+  printf '%s:%s:%s\n' "$pid" "$identity" \
     "$(sed -n '1p' "$1/.lock-session" 2>/dev/null | cksum | awk '{ print $1 }')"
 }
 
