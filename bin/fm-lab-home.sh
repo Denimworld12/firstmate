@@ -272,7 +272,7 @@ fm_lab_home_teardown() { # <dir>
     fm_lab_home_error "cannot resolve lab dir: $dir"
     return 1
   }
-  fm_lab_home_verify "$canon" >/dev/null || {
+  [ "$(fm_lab_home_verify "$canon" 2>/dev/null)" = "$canon" ] || {
     fm_lab_home_error "refusing to teardown $canon: not a marked lab dir"
     return 1
   }

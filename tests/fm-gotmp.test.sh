@@ -32,7 +32,7 @@ TMP_ROOT=
 
 cleanup() {
   if [ -n "${TMP_ROOT:-}" ]; then
-    rm -rf "$TMP_ROOT"
+    "$ROOT/bin/fm-lab-home.sh" teardown "$TMP_ROOT" >/dev/null 2>&1 || rm -rf "$TMP_ROOT"
   fi
 }
 trap cleanup EXIT

@@ -106,7 +106,7 @@ send_line() {  # <text>
 
 cleanup() {
   tmux -L "$TMUX_SOCKET" kill-server >/dev/null 2>&1 || true
-  rm -rf "$LAB"
+  fm_test_lab_remove "$LAB"
 }
 trap cleanup EXIT INT TERM
 

@@ -49,7 +49,7 @@ cleanup() {
     rc=1
   fi
   if [ "$rc" -eq 0 ] || [ "${KEEP_LAB_ARTIFACTS:-}" != 1 ]; then
-    rm -rf "$TMP_ROOT"
+    fm_test_lab_remove "$TMP_ROOT"
   else
     printf 'kept lab artifacts at %s\n' "$TMP_ROOT" >&2
   fi

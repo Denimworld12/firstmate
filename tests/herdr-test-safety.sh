@@ -22,6 +22,12 @@ fm_test_lab_adopt() { # <dir>
   "$HERDR_TEST_SAFETY_DIR/bin/fm-lab-home.sh" adopt "$1" >/dev/null
 }
 
+# Remove an adopted lab through the helper so its binding record goes with it;
+# a dir that never became a lab is simply removed.
+fm_test_lab_remove() { # <dir>
+  "$HERDR_TEST_SAFETY_DIR/bin/fm-lab-home.sh" teardown "$1" >/dev/null 2>&1 || rm -rf "$1"
+}
+
 # herdr_forget_inherited_pane: drop the Herdr PANE identity this test process
 # inherited from whatever terminal it was started in.
 #

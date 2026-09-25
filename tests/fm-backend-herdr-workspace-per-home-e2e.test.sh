@@ -70,7 +70,7 @@ fm_test_lab_adopt "$TMP_ROOT"
 SESSION="fm-lab-herdr-e2e-$$"
 export HERDR_SESSION="$SESSION"
 "$ROOT/bin/fm-lab-home.sh" record-herdr-session "$TMP_ROOT" "$SESSION" || {
-  rm -rf "$TMP_ROOT"
+  fm_test_lab_remove "$TMP_ROOT"
   printf 'not ok - could not record the Herdr lab session in the lab binding\n' >&2
   exit 1
 }
@@ -79,7 +79,7 @@ cleanup_all() {
   [ -n "$WT1" ] && command -v treehouse >/dev/null 2>&1 && treehouse return --force "$WT1" >/dev/null 2>&1
   [ -n "$WT2" ] && command -v treehouse >/dev/null 2>&1 && treehouse return --force "$WT2" >/dev/null 2>&1
   herdr_safe_stop_and_delete "$SESSION"
-  rm -rf "$TMP_ROOT"
+  fm_test_lab_remove "$TMP_ROOT"
 }
 trap cleanup_all EXIT
 fm_herdr_lab_prepare "$SESSION" || fail "could not prepare isolated Herdr lab session"

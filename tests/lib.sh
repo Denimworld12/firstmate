@@ -53,6 +53,12 @@ fm_test_lab_adopt() { # <dir>
   "$FM_TEST_LAB_HOME_HELPER" adopt "$1" >/dev/null
 }
 
+# Remove an adopted lab through the helper so its binding record goes with it;
+# a dir that never became a lab is simply removed.
+fm_test_lab_remove() { # <dir>
+  "$FM_TEST_LAB_HOME_HELPER" teardown "$1" >/dev/null 2>&1 || rm -rf "$1"
+}
+
 # Arms the test-only seams bin/ scripts expose (e.g. fm-afk-launch.sh's
 # FM_TEST_HARNESS harness pin). Production processes never export it, so a
 # leaked seam variable stays inert outside a suite.
@@ -205,6 +211,7 @@ export FM_TEST_STUB_MAX_BLOCK_SECONDS
 fm_test_cleanup() {
   local d
   fm_test_reap_procevent_homes
+  fm_test_lab_remove "$FM_TEST_LAB_DIR"
   for d in "${FM_TEST_CLEANUP_DIRS[@]:-}"; do
     [ -n "$d" ] && rm -rf "$d"
   done
@@ -265,7 +272,7 @@ fm_test_reap_orphans() {
     if [ -d "$dir" ] && [ ! -L "$dir" ]; then
       find "$dir" -type d -exec chmod u+rwx {} + 2>/dev/null || true
     fi
-    rm -rf "$dir"
+    fm_test_lab_remove "$dir"
   done
 }
 

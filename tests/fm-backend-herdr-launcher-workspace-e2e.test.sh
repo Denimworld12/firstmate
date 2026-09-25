@@ -50,13 +50,13 @@ TMP_ROOT=$(mktemp -d "$(cd "${TMPDIR:-/tmp}" && pwd -P)/fm-herdr-launcher-e2e.XX
 fm_test_lab_adopt "$TMP_ROOT"
 HERDR_LAB_HELPER="$ROOT/bin/fm-herdr-lab.sh"
 HERDR_LAB_SESSION=$("$HERDR_LAB_HELPER" name fm-herdr-launcher-ws) || {
-  rm -rf "$TMP_ROOT"
+  fm_test_lab_remove "$TMP_ROOT"
   printf 'not ok - could not generate an isolated Herdr lab session name\n' >&2
   exit 1
 }
 export HERDR_SESSION="$HERDR_LAB_SESSION"
 "$ROOT/bin/fm-lab-home.sh" record-herdr-session "$TMP_ROOT" "$HERDR_LAB_SESSION" || {
-  rm -rf "$TMP_ROOT"
+  fm_test_lab_remove "$TMP_ROOT"
   printf 'not ok - could not record the Herdr lab session in the lab binding\n' >&2
   exit 1
 }
@@ -75,7 +75,7 @@ cleanup_all() {
   done
   WORKTREES=()
   "$HERDR_LAB_HELPER" teardown "$HERDR_LAB_SESSION" || status=$?
-  rm -rf "$TMP_ROOT"
+  fm_test_lab_remove "$TMP_ROOT"
   return "$status"
 }
 trap cleanup_all EXIT

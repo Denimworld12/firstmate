@@ -57,6 +57,7 @@ OTHER_LAB="$WORLD/other-lab"
 mkdir -p "$OTHER_LAB"
 "$LAB_HELPER" adopt "$OTHER_LAB" >/dev/null \
   || fail "could not adopt the second gate-refuse lab dir"
+trap 'fm_test_lab_remove "$LAB"; fm_test_lab_remove "$OTHER_LAB"; fm_test_cleanup' EXIT
 
 # The env marker's exact stderr fragment (the primary signal).
 ENV_MSG='NO_MISTAKES_GATE set'
@@ -226,19 +227,21 @@ test_marker_outside_temp_root_refuses() {
 }
 
 test_forged_binding_refuses() {
-  local home token bindings fakebin out rc
+  local home token bindings original fakebin out rc
   # Adopt a dir, then corrupt the binding record to name a different dir: the
   # marker no longer binds back to itself.
   home=$(mktemp -d "$WORLD/forged-binding.XXXXXX")
   "$LAB_HELPER" adopt "$home" >/dev/null || fail "could not adopt forged-binding home"
   token=$(sed -n 's/^token=//p' "$home/.fm-lab-home" | head -1)
   bindings="${FM_LAB_HOME_STATE_DIR:-${TMPDIR:-/tmp}/fm-lab-home-${UID}}/bindings"
+  original=$(cat "$bindings/$token")
   printf '%s\n' "$WORLD/somewhere-else" > "$bindings/$token"
   fakebin=$(make_lab_fakebin "$LAB/forgedb-fake")
   out=$(run_lib_call "$NORMAL_CWD" "$home" "PATH=$fakebin:$PATH"); rc=$?
   expect_code 3 "$rc" "helper: a binding that names another dir must refuse"
   assert_contains "$out" "$LAB_MSG" "helper: forged-binding refusal must name the failed lab check"
-  printf '%s\n' "$home" > "$bindings/$token"
+  printf '%s\n' "$original" > "$bindings/$token"
+  fm_test_lab_remove "$home"
   pass "fm-gate-refuse-lib: a forged marker binding refuses"
 }
 

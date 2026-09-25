@@ -303,7 +303,7 @@ EOF
       "$HERDR_LAB_HELPER" teardown "$HERDR_LAB_SESSION" >/dev/null 2>&1 || true
     LAB_READY=0
   fi
-  rm -rf "$TMP_ROOT"
+  fm_test_lab_remove "$TMP_ROOT"
 }
 trap cleanup_all EXIT
 

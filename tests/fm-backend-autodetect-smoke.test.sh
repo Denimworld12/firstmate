@@ -66,12 +66,12 @@ TMP_ROOT=$(mktemp -d "$(cd "${TMPDIR:-/tmp}" && pwd -P)/fm-backend-autodetect-sm
 fm_test_lab_adopt "$TMP_ROOT"
 HERDR_LAB_HELPER="$ROOT/bin/fm-herdr-lab.sh"
 HERDR_LAB_SESSION=$("$HERDR_LAB_HELPER" name fm-autodetect-smoke-concurrency-h3) || {
-  rm -rf "$TMP_ROOT"
+  fm_test_lab_remove "$TMP_ROOT"
   fail "could not generate an isolated Herdr lab session name"
 }
 export HERDR_SESSION="$HERDR_LAB_SESSION"
 "$ROOT/bin/fm-lab-home.sh" record-herdr-session "$TMP_ROOT" "$HERDR_LAB_SESSION" || {
-  rm -rf "$TMP_ROOT"
+  fm_test_lab_remove "$TMP_ROOT"
   fail "could not record the Herdr lab session in the lab binding"
 }
 ID="autodetectsmoke1"
@@ -80,7 +80,7 @@ cleanup_all() {
   local cleanup_status=0
   [ -n "$WT" ] && command -v treehouse >/dev/null 2>&1 && treehouse return --force "$WT" >/dev/null 2>&1
   "$HERDR_LAB_HELPER" teardown "$HERDR_LAB_SESSION" || cleanup_status=$?
-  rm -rf "$TMP_ROOT"
+  fm_test_lab_remove "$TMP_ROOT"
   return "$cleanup_status"
 }
 on_exit() {
