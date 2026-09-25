@@ -1,0 +1,3 @@
+Expired record removed after next publish
+Remaining records: 1
+

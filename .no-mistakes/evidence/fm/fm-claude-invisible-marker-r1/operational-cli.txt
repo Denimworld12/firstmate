@@ -1,0 +1,9 @@
+Published ASCII doorbell: : Firstmate operational input waiting: read '/private/var/folders/5x/4nqprlbx0518k3ybcb1sz6gr0000gn/T/fm-lab.kFDdLw/state/operational-inbox/1790337177-8c960bbda14abc9c.msg' and handle its contents as Firstmate operational input.
+Published envelope hex prefix:            e2  81  a3  46  49  52  53  54  4d  41  54  45  5f  4f  50  3a
+           20  76  31  20  61  77  61  79  2d                            
+
+Home-bound recognized kind: away-supervisor
+Open body: Status: needs captain review
+Copied same doorbell (documented replay): away-supervisor
+Bare ASCII text kind: <none>
+Missing-record kind: <none>
