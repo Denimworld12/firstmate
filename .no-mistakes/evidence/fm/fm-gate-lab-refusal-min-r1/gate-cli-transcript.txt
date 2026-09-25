@@ -1,0 +1,28 @@
+=== create fresh disposable home ===
+./.gate-live.Clop7W/lab
+status=0
+=== gate send against marked home (missing task, reaches task lookup) ===
+fm-gate-refuse: gate agent lifecycle permitted only against lab home ./.gate-live.Clop7W/lab
+error: target 'missing-task' is not resolvable (tried meta=./.gate-live.Clop7W/lab/state/missing-task.meta; metadata window/terminal lookup; backend=none). Use fm-missing-task for a recorded task/lane, or pass a well-formed explicit backend target such as session:window.
+status=1
+=== gate teardown against marked home (missing task, reaches task lookup) ===
+fm-gate-refuse: gate agent lifecycle permitted only against lab home ./.gate-live.Clop7W/lab
+error: teardown refused: task record is not a regular file at ./.gate-live.Clop7W/lab/state/missing-task.meta
+status=1
+=== gate send against unmarked home ===
+error: no-mistakes gate agent must not drive the fleet (NO_MISTAKES_GATE set)
+status=3
+=== gate send against marked home with relocated state ===
+error: no-mistakes gate agent must not drive the fleet (NO_MISTAKES_GATE set)
+status=3
+=== try marking populated home (must leave marker absent) ===
+fm-lab-home: refusing './.gate-live.Clop7W/real': a lab marker is only ever stamped on a fresh empty dir
+status=1
+marker_absent=0
+=== try marking newline-named entry (must leave marker absent) ===
+fm-lab-home: refusing './.gate-live.Clop7W/newline': a lab marker is only ever stamped on a fresh empty dir
+status=1
+marker_absent=0
+=== try remint existing lab (must refuse) ===
+fm-lab-home: refusing './.gate-live.Clop7W/lab': a lab marker is only ever stamped on a fresh empty dir
+status=1
