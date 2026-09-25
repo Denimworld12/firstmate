@@ -88,6 +88,7 @@ Follow-up: capturing that first prompt on Grok and OpenCode would reintroduce th
 A captain message typed while an engine turn is already running reaches the engine at its next wake.
 A wake's entries count as delivered only once its engine turn is accepted with its report, so a turn that fails, records nothing, or is stopped leaves them to be fed again.
 An attended wake whose mirror is missing or cannot be read, or holds an entry that does not parse, reaches main with `the dialog mirror could not be read` before any engine turn, and the cursor stays where it was; an away wake never reads the mirror or moves its cursor.
+A captain prompt whose own hook write fails, because permission on its state file is refused or the disk is full, is not mirrored, so the engine may judge the next attended wake without it: Codex's transcript reader retries it at its next hook, while Claude and Cursor have no later source for it.
 
 ## Captain outcomes
 
