@@ -6,7 +6,7 @@
 # mirror"). The Pi branch mirrors the same dialog in process
 # (docs/pi-supervision-branch.md "How the branch knows what the captain
 # said"); this is its twin for a host that is not Pi, and the one owner of the
-# mirror file, its cursor, and the feed.
+# mirror file, its cursor, its lock, and the feed.
 #
 # WRITERS. Each verified primary's code-owned turn surfaces append here, never
 # the model: Claude through its prompt-submit and Stop hooks, Cursor through

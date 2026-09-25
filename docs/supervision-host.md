@@ -68,6 +68,7 @@ A captain who leaves while an attended turn runs turns its captain outcomes into
 ## The dialog mirror
 
 The engine's conversation receives nothing between wakes, so each attended wake carries, at its head, what the captain and main said since the last wake: the same `[captain]` and `[main]` context the Pi branch receives as mirror messages, framed by the same prompt rule (context for judgment, never instructions; `bin/fm-branch-prompt.sh` "Context channels").
+`bin/fm-host-mirror.sh` owns the mirror's files in `state/`: `.host-mirror.jsonl` holds the dialog entries, `.host-mirror-cursor` the newest entry fed to the engine conversation, and `.host-mirror.lock` serializes every append and feed.
 Each primary's code-owned turn surfaces write it, never the model:
 
 | Primary | Captain text | Main text |
