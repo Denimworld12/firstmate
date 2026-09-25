@@ -1,0 +1,11 @@
+ok - mirror: the Claude, Codex, and Cursor registrations each write the captain's prompt and main's reply
+ok - mirror: Codex's hooks read its rollout transcript, so a mid-turn steer is mirrored once and injected items never are
+ok - mirror: writers stay silent and write nothing on a home that did not opt in
+ok - mirror: a home without the flag is untouched by every writer, the drain section, and the quiet check
+ok - mirror: operational input, a harness-started turn, a foreign host's payload, other events, and a session without the lock are never mirrored
+ok - mirror: a repeated entry is recorded once, and a long entry keeps its head and tail
+ok - mirror: the captain's dialog lands only in an owner-only mirror, even when the file already existed readable by others
+ok - mirror: a Codex message the mirror refused is recorded by the next hook instead of being read past
+ok - mirror: the feed resumes from its committed cursor, re-anchors on a new conversation or session, and is bounded
+ok - mirror: a recreated mirror continues past the committed and staged cursors, so a resumed conversation still gets new dialog
+ok - mirror: exactly the primaries whose writers record a session from its first captain prompt report a verified mirror

@@ -1,0 +1,10 @@
+identified=claude
+Quiet mode needs nothing on this home: the ordinary supervision session already handles the wakes it can while the captain is present, never opens a turn here for a routine outcome, and hands this conversation only what needs it; no daemon and no away record are used.
+ready_exit=0
+missing_engine_exit=1
+missing_mirror: 1
+first_feed:
+[captain] Is the release ready?
+feed_exit=0
+committed_cursor=1:session-1
+invalid_mirror: 1

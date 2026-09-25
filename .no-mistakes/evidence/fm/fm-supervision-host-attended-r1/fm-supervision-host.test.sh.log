@@ -1,0 +1,9 @@
+ok - report surface: only the branch actor's current turn may report, and only on the tasks its wake names
+ok - report surface: an outcome recorded after the captain returned is queued durably for main
+ok - dispatch entry: the host reads branch eligibility and the wake prompt from the Pi branch's own owner
+ok - drain: BRANCH OUTCOMES runs only on an opted-in home whose primary is not Pi
+ok - drain: branch outcomes the byte cap leaves out stay unread and follow on the next drain
+ok - drain: branch outcomes stay unread when the drain cannot print them
+not ok - main's next drain must list the routine outcome for awareness (missing: 'BRANCH OUTCOMES, ROUTINE (handled by the supervision session since your last drain')
+--- output ---
+
